@@ -10,6 +10,7 @@ import tensorflow as tf
 from sklearn.manifold import TSNE
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import hsv_to_rgb
 
 # Constants
 data_directory = 'data/first'
@@ -155,7 +156,7 @@ def build_autoencoder(input_shape, encoding_dim, N_hidden = 2, division_rate = 4
 	return autoencoder, encoder
 
 # This builds the entire thing
-def gene_only_encoder(train_data, encoding_dim, saved_model_dir_name, name, N_hidden = 2, division_rate = 4, actvn = 'sigmoid', epochs = 15, override = False):
+def gene_only_encoder(train_data, test_data, encoding_dim, saved_model_dir_name, name, N_hidden = 2, division_rate = 4, actvn = 'sigmoid', epochs = 15, override = False):
 	if not os.path.exists(f'saved_models/{saved_model_dir_name}/{name}_NHL{N_hidden}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_auto') or override:
 		autoencoder, encoder = build_autoencoder((train_data.shape), encoding_dim = encoding_dim, 
 												 N_hidden = N_hidden, division_rate = division_rate, 
@@ -163,7 +164,7 @@ def gene_only_encoder(train_data, encoding_dim, saved_model_dir_name, name, N_hi
 		# Compile using the common optimizer of adam, the loss has to be mean_squared_error
 		autoencoder.compile(optimizer='adam', loss='mean_squared_error')
 		# Fitting the model, epochs =  50 
-		history = autoencoder.fit(train_data, train_data, epochs = epochs)
+		history = autoencoder.fit(train_data, train_data, epochs = epochs, validation_data=(test_data, test_data))
 		# Save the model
 		autoencoder.save(f'saved_models/{saved_model_dir_name}/{name}_NHL{N_hidden}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_auto')
 		encoder.save(f'saved_models/{saved_model_dir_name}/{name}_NHL{N_hidden}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_encoder')
@@ -245,13 +246,13 @@ def build_all_encoder(protein_shape, gene_shape, embedding_dim, actvn = 'sigmoid
 def build_all_encoder(protein_shape, gene_shape, embedding_dim, actvn = 'sigmoid',
 					  N_hidden_gene = 2, N_hidden_protein = 1, division_rate = 4):
 '''
-def gene_protein_encoder(pro_train_data, gene_train_data, encoding_dim, saved_model_dir_name, name, N_hidden_gene = 2, N_hidden_protein = 1, division_rate = 4, actvn = 'sigmoid', epochs = 15, override = False):
+def gene_protein_encoder(pro_train_data, gene_train_data, pro_test_data, gene_test_data,encoding_dim, saved_model_dir_name, name, N_hidden_gene = 2, N_hidden_protein = 1, division_rate = 4, actvn = 'sigmoid', epochs = 15, override = False):
 	if not os.path.exists(f'saved_models/{saved_model_dir_name}/{name}_NHG{N_hidden_gene}_NHP{N_hidden_protein}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_auto') or override:
 		merged, autodecoder = build_all_encoder((pro_train_data.shape), (gene_train_data.shape), embedding_dim = encoding_dim,
 												 N_hidden_gene = N_hidden_gene, N_hidden_protein = N_hidden_protein,
 												 division_rate = division_rate, actvn = actvn)
 		autodecoder.compile(optimizer = 'adam', loss = 'mean_squared_error')
-		history = autodecoder.fit([gene_train_data,pro_train_data], [gene_train_data,pro_train_data], epochs = epochs)
+		history = autodecoder.fit([gene_train_data,pro_train_data], [gene_train_data,pro_train_data], epochs = epochs, validation_data=([gene_test_data,pro_test_data], [gene_test_data,pro_test_data]))
 
 		# Save the model
 		autodecoder.save(f'saved_models/{saved_model_dir_name}/{name}_NHG{N_hidden_gene}_NHP{N_hidden_protein}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_auto')
@@ -277,6 +278,23 @@ def generate_colormap(colors, labels_encoder, labels):
 	for key, values in enumerate(labels_encoder.inverse_transform(np.unique(labels))):
 		color_map[values] = colors[key]
 	return color_map
+
+def rgb_to_hex(rgb):
+	return '#%02x%02x%02x' % rgb
+
+	
+def generate_color(labels_encoder, labels):
+	color = np.linspace(0,360, len(labels_encoder.inverse_transform(np.unique(labels))))
+	color = np.concatenate(((color/360).reshape(-1,1), np.array([[0.8,0.9]]*len(labels_encoder.inverse_transform(np.unique(labels))))), axis = 1)
+	color = np.around(hsv_to_rgb(color)*255,0).astype(int).tolist()
+
+	for i in range(len(color)):
+		temp = rgb_to_hex(tuple(color[i]))
+		
+		color[i] = temp
+
+	return color
+
 
 def vis_data2d(left_data_TSNE, right_data_TSNE, train_labels, labels_encoder, color_map, N_predict, left_label = 'Encoded TSNE', right_label = 'uncoded TSNE', spacer = 'geneOnly'):
 	'''	
@@ -324,6 +342,46 @@ def vis_data2d(left_data_TSNE, right_data_TSNE, train_labels, labels_encoder, co
 	plt.savefig(f'anim/{spacer}/2d_plot.png', dpi = 150)
 	plt.show()
 
+
+def hyper_tune_models(pro_train_data,gene_train_data,pro_test_data, gene_test_data,NHG, NHP, div_rates, encoding_dims,saved_model_dir_name, name,epochs = 7):
+	val_loss_list = []
+	for N_HIDDEN_GENE in NHG:
+		for N_HIDDEN_PROTEIN in NHP:
+			for div_rate in div_rates:
+				for ENCODING_DIM in encoding_dims:
+					history, autodecoder, merged = gene_protein_encoder(pro_train_data,gene_train_data,pro_test_data, gene_test_data, ENCODING_DIM, f'{saved_model_dir_name}_hypertune', name,
+																		N_hidden_gene = N_HIDDEN_GENE, N_hidden_protein = N_HIDDEN_PROTEIN, division_rate = div_rate, epochs=epochs)
+					#print(f'N_HIDDEN_GENE: {N_HIDDEN_GENE}, N_HIDDEN_PROTEIN: {N_HIDDEN_PROTEIN}, div_rate: {div_rate}, ENCODING_DIM: {ENCODING_DIM}')
+					x= np.array(history.history["val_loss"]) < np.array(history.history['loss'])
+					y = np.array(history.history["val_loss"])
+					
+					dct = {'epoch':0, 'val_loss':0, 'NHG':0, 'NHP':0, 'divrate':0, 'encoding_dim':0}
+					
+					dct['epoch'] = np.argmin(y[x])
+					dct['val_loss'] = np.min(y[x])
+					dct['NHG'] = N_HIDDEN_GENE
+					dct['NHP'] = N_HIDDEN_PROTEIN
+					dct['divrate'] = div_rate
+					dct['encoding_dim'] = ENCODING_DIM
+
+					val_loss_list.append(dct)
+
+
+	min_loss = 10000
+	indices = 0
+	for index, model in enumerate(val_loss_list):
+		if min_loss > model['val_loss']:
+			min_loss = model['val_loss']
+			indices = index
+
+	print(f"""
+		Ideal Conditions are:
+		Number of Gene Layers: {val_loss_list[indices]['NHG']}
+		Number of Protein Layers: {val_loss_list[indices]['NHP']}
+		division rate: {val_loss_list[indices]['divrate']}
+		Encoding Dimensions: {val_loss_list[indices]['encoding_dim']}""")
+		
+	return val_loss_list[indices]['epoch'], val_loss_list[indices]['NHG'], val_loss_list[indices]['NHP'], val_loss_list[indices]['divrate'], val_loss_list[indices]['encoding_dim']
 
 '''meta_data, pro, rna, cite_seq_data, labels_encoder, labels, data_with_targets = compile_data(data_directory, cell_type_col)
 train_data, test_data, train_labels, test_labels = generate_training(data_with_targets, pro)
