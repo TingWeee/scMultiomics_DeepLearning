@@ -330,9 +330,17 @@ def vis_data2d(left_data_TSNE, right_data_TSNE, train_labels, labels_encoder, co
 	for key, group in grouped:
 		group.plot(ax=ax[1], kind='scatter', x='x', y='y', label=key, color=color_map[key], s = 2)
 
-	for axes in ax:
-		axes.set_xlim(left_df.min()['x']*1.1, left_df.max()['x']*1.1)
-		axes.set_ylim(left_df.min()['y']*1.1, left_df.max()['y']*1.1)
+
+	above_mean_left = (left_df.mean(numeric_only=True) + (3*left_df.std(numeric_only=True)))
+	below_mean_left = (left_df.mean(numeric_only=True) - (3*left_df.std(numeric_only=True)))
+	above_mean_right = (right_df.mean(numeric_only=True) + (3*right_df.std(numeric_only=True)))
+	below_mean_right = (right_df.mean(numeric_only=True) - (3*right_df.std(numeric_only=True)))
+
+	ax[0].set_xlim(below_mean_left['x'], above_mean_left['x'])
+	ax[1].set_xlim(below_mean_right['x'], above_mean_right['x'])
+
+	ax[0].set_ylim(below_mean_left['y'], above_mean_left['y'])
+	ax[1].set_ylim(below_mean_right['y'], above_mean_right['y'])
 
 	ax[1].set_title(right_label)
 	ax[0].set_title(left_label)
