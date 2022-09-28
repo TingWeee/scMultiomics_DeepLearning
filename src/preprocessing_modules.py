@@ -266,6 +266,69 @@ def gene_protein_encoder(pro_train_data, gene_train_data, pro_test_data, gene_te
 
 		return '', autodecoder, merged
 
+def custom_encoder(n_shape, actvn = 'sigmoid', n_hidden_layer = 2, division_rate=4):
+	activation = actvn
+
+	inputs = layers.Input(shape = (n_shape[1],))
+	n_feat_dim = n_shape[1]
+
+	node_layers = [n_feat_dim//division_rate]
+	# Initialize the first dense layer
+	encoding = layers.Dense(n_feat_dim//division_rate, activation = activation)(inputs)
+	encoding = layers.BatchNormalization()(encoding)
+
+	div_rate_g = division_rate
+
+	for i in range(n_hidden_layer-1):
+		div_rate_g = div_rate_g*division_rate
+		encoding = layers.Dense(n_feat_dim//div_rate_g, activation = activation)(encoding)
+		encoding = layers.BatchNormalization()(encoding)
+		node_layers.append(n_feat_dim//div_rate_g)
+	return encoding, n_feat_dim, node_layers, inputs
+
+def custom_concat(encoding_layers, embedding_dim, actvn = 'sigmoid'):
+	activation = actvn
+	# encoding_layers should be a list of encoding layers
+	merged = layers.Concatenate()(encoding_layers)
+	merged = layers.Dense(embedding_dim, activation = activation)(merged)
+	return merged
+
+def custom_decoder(merged, n_feat_dim, node_layers, actvn = 'sigmoid'):
+	activation = actvn
+	decoder = layers.Dense(node_layers[0], activation = activation)(merged)
+	decoder = layers.BatchNormalization()(decoder)
+	for nodes in node_layers[1:]:
+		decoder = layers.Dense(nodes, activation = activation)(decoder)
+		decoder = layers.BatchNormalization()(decoder)
+	decoder = layers.Dense(n_feat_dim, activation = activation)(decoder)
+	return decoder
+
+def build_custom_autoencoders(inputs_list, decoder_list, merged):
+	autodecoder = Model(inputs_list, outputs = decoder_list)
+	merged_m = Model(inputs_list, merged)
+	autodecoder.compile(optimizer = 'adam', loss = 'mean_squared_error')
+	return autodecoder, merged_m
+
+
+def save_load_build_custom_autoencoders(inputs_list, decoder_list, merged, train_data_lst,saved_model_dir_name, epochs = 15, override=  False):
+	if not os.path.exists(f'saved_models/{saved_model_dir_name}/custom_N-{len(inputs_list)}-EPOCHS{epochs}_auto') or override:
+		autodecoder = Model(inputs_list, outputs = decoder_list)
+		merged_m = Model(inputs_list, merged)
+		autodecoder.compile(optimizer = 'adam', loss = 'mean_squared_error')
+		history = autodecoder.fit(train_data_lst, train_data_lst, epochs = epochs)
+
+		# Save the model
+		autodecoder.save(f'saved_models/{saved_model_dir_name}/custom_N-{len(inputs_list)}-EPOCHS{epochs}_auto')
+		merged_m.save(f'saved_models/{saved_model_dir_name}/custom_N-{len(inputs_list)}-EPOCHS{epochs}_merged')
+		return history, autodecoder, merged_m
+
+	else:
+		print('MODEL ALREADY EXISTS, TO RETRAIN, SET PARAM "override = True"')
+		autodecoder = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/custom_N-{len(inputs_list)}-EPOCHS{epochs}_auto')
+		merged_m = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/custom_N-{len(inputs_list)}-EPOCHS{epochs}_merged')
+
+		return '', autodecoder, merged_m
+
 def load_gene_only_coders(encoding_dim, saved_model_dir_name, name, N_hidden = 2, division_rate = 4, actvn = 'sigmoid', epochs = 15):
 	autoencoder = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/{name}_NHL{N_hidden}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_auto')
 	encoder = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/{name}_NHL{N_hidden}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_encoder')
@@ -297,7 +360,7 @@ def generate_color(labels_encoder, labels):
 
 
 def vis_data2d(left_data_TSNE, right_data_TSNE, train_labels, labels_encoder, color_map, N_predict, left_label = 'Encoded TSNE', right_label = 'uncoded TSNE', spacer = 'geneOnly'):
-	'''	
+	''' 
 	left/right_data_TSNE comes from generating the following code, run it yourself using TSNE
 	# Perform the TSNE on the bottleneck layer of the encoded data and the non encoded data
 	N_predict = 2000
