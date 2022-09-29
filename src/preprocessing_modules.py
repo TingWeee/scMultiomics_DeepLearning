@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import hsv_to_rgb
 
 # Constants
-data_directory = 'data/first'
+data_directory = 'Sample data/first'
 cell_type_col = 'celltype.l2'
 
 
@@ -266,6 +266,13 @@ def gene_protein_encoder(pro_train_data, gene_train_data, pro_test_data, gene_te
 
 		return '', autodecoder, merged
 
+###############
+# START BLOCK #
+###############
+# This begins the start of implementing custom n-autoencoders
+
+# Generalise the Encoder Layer Building
+# Make it return stuff I need later for concat, decoding and model building
 def custom_encoder(n_shape, actvn = 'sigmoid', n_hidden_layer = 2, division_rate=4):
 	activation = actvn
 
@@ -286,6 +293,8 @@ def custom_encoder(n_shape, actvn = 'sigmoid', n_hidden_layer = 2, division_rate
 		node_layers.append(n_feat_dim//div_rate_g)
 	return encoding, n_feat_dim, node_layers, inputs
 
+# Generalise the concatenation, supply the embedding dimensions here
+# Make it return the merged layers
 def custom_concat(encoding_layers, embedding_dim, actvn = 'sigmoid'):
 	activation = actvn
 	# encoding_layers should be a list of encoding layers
@@ -293,6 +302,10 @@ def custom_concat(encoding_layers, embedding_dim, actvn = 'sigmoid'):
 	merged = layers.Dense(embedding_dim, activation = activation)(merged)
 	return merged
 
+# Generalise the decoder layer building
+# Make it return the decoder.
+# It takes some inputs from the encoders to ensure the same number of nodes and layers
+# in the encoder layers
 def custom_decoder(merged, n_feat_dim, node_layers, actvn = 'sigmoid'):
 	activation = actvn
 	decoder = layers.Dense(node_layers[0], activation = activation)(merged)
@@ -303,13 +316,15 @@ def custom_decoder(merged, n_feat_dim, node_layers, actvn = 'sigmoid'):
 	decoder = layers.Dense(n_feat_dim, activation = activation)(decoder)
 	return decoder
 
+#Builds the model based on the inputs, finalised decoders and the merged layer.
 def build_custom_autoencoders(inputs_list, decoder_list, merged):
 	autodecoder = Model(inputs_list, outputs = decoder_list)
 	merged_m = Model(inputs_list, merged)
 	autodecoder.compile(optimizer = 'adam', loss = 'mean_squared_error')
 	return autodecoder, merged_m
 
-
+# A fancier function of build_custom_autoencoders which saves and loads models
+# Because I don't want to train the model everytime
 def save_load_build_custom_autoencoders(inputs_list, decoder_list, merged, train_data_lst,saved_model_dir_name, epochs = 15, override=  False):
 	if not os.path.exists(f'saved_models/{saved_model_dir_name}/custom_N-{len(inputs_list)}-EPOCHS{epochs}_auto') or override:
 		autodecoder = Model(inputs_list, outputs = decoder_list)
