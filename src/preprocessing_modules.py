@@ -143,26 +143,26 @@ def build_autoencoder(input_shape, encoding_dim, N_hidden = 2, division_rate = 4
 	feat_dim = input_shape[1]
 	# The first fully connected layer to connect out inputs to is making the feature smaller by floor dividing by 4
 	# Followed by a BatchNormalization layer that allows every layer of the network to do learning more independently
-	encoding = layers.Dense(feat_dim//division_rate, activation = activation)(inputs)
-	encoding = layers.BatchNormalization()(encoding)
+	encoding = layers.Dense(feat_dim//division_rate, activation = activation, name = 'gene_encoder_1')(inputs)
+	encoding = layers.BatchNormalization(name = 'BatchNormGeneEncode1')(encoding)
 	div_rate = division_rate
 	for i in range(N_hidden-1):
 		# The next layer is making the feature smaller by floor dividing by 4
 		div_rate = div_rate*division_rate
-		encoding = layers.Dense(feat_dim//div_rate, activation = activation)(encoding)
-		encoding = layers.BatchNormalization()(encoding)
+		encoding = layers.Dense(feat_dim//div_rate, activation = activation, name = f'gene_encoder_{i+2}')(encoding)
+		encoding = layers.BatchNormalization(name = f'BatchNormGeneEncode{i+2}')(encoding)
 	# Bottleneck layer
-	encoding = layers.Dense(encoding_dim, activation = activation)(encoding)
-	encoding = layers.BatchNormalization()(encoding)
+	encoding = layers.Dense(encoding_dim, activation = activation, name = f'EmbeddingDimGene')(encoding)
+	encoding = layers.BatchNormalization(name = f'EmbeddingDimGene{i+3}')(encoding)
 	# Start of the Decoding layer
-	decoding = layers.Dense(feat_dim//div_rate, activation = activation)(encoding)
-	decoding = layers.BatchNormalization()(decoding)
+	decoding = layers.Dense(feat_dim//div_rate, activation = activation, name = f'gene_decoder_1')(encoding)
+	decoding = layers.BatchNormalization(name = f'BatchNormGeneDecode1')(decoding)
 	for i in range(N_hidden-1):
 		div_rate = div_rate//division_rate
-		decoding = layers.Dense(feat_dim//div_rate, activation = activation)(decoding)
-		decoding = layers.BatchNormalization()(decoding)
+		decoding = layers.Dense(feat_dim//div_rate, activation = activation, name = f'gene_decoder_{i+2}')(decoding)
+		decoding = layers.BatchNormalization(name = f'BatchNormGene{i+2}')(decoding)
 	# Remember to map back to our initial dimensions of feat_dim
-	decoding = layers.Dense(feat_dim, activation = activation)(decoding)
+	decoding = layers.Dense(feat_dim, activation = activation, name = f'gene_decoder_{i+3}')(decoding)
 	autoencoder = Model(inputs, decoding)
 	encoder = Model(inputs, encoding)
 	return autoencoder, encoder
@@ -174,7 +174,8 @@ def gene_only_encoder(train_data, test_data, encoding_dim, saved_model_dir_name,
 												 N_hidden = N_hidden, division_rate = division_rate, 
 												 actvn = actvn)
 		# Compile using the common optimizer of adam, the loss has to be mean_squared_error
-		autoencoder.compile(optimizer='adam', loss='mean_squared_error')
+		autoencoder.compile(optimizer=tf.keras.optimizers.Adam(), loss='mean_squared_error')
+		encoder.compile(optimizer = tf.keras.optimizers.Adam(), loss = 'mean_squared_error')
 		# Fitting the model, epochs =  50 
 		history = autoencoder.fit(train_data, train_data, epochs = epochs, validation_data=(test_data, test_data))
 		# Save the model
@@ -203,13 +204,13 @@ def build_all_encoder(protein_shape, gene_shape, embedding_dim, actvn = 'sigmoid
 	input    2nd     3rd
 	2000 --> 500 --> 125
 	'''
-	gene_encoding = layers.Dense(gene_feat_dim//division_rate, activation = activation)(gene_inputs)
-	gene_encoding = layers.BatchNormalization()(gene_encoding)
+	gene_encoding = layers.Dense(gene_feat_dim//division_rate, activation = activation, name = 'gene_encoder_1')(gene_inputs)
+	gene_encoding = layers.BatchNormalization(name = 'BatchNormGeneEncode1')(gene_encoding)
 	div_rate_g = division_rate
 	for i in range(N_hidden_gene-1):
 		div_rate_g = div_rate_g * division_rate 
-		gene_encoding = layers.Dense(gene_feat_dim//div_rate_g, activation = activation)(gene_encoding)
-		gene_encoding = layers.BatchNormalization()(gene_encoding)
+		gene_encoding = layers.Dense(gene_feat_dim//div_rate_g, activation = activation, name = f'gene_encoder_{i+2}')(gene_encoding)
+		gene_encoding = layers.BatchNormalization(name=f'BatchNormGeneEncode{i+2}')(gene_encoding)
 	# Make the layers for my protein encoder
 	# This is to get the protein inputs
 	pro_inputs = layers.Input(shape = (protein_shape[1],))
@@ -222,32 +223,33 @@ def build_all_encoder(protein_shape, gene_shape, embedding_dim, actvn = 'sigmoid
 	input  1st
 	20 --> 5
 	'''
-	protein_encoding = layers.Dense(pro_feat_dim//division_rate, activation = activation)(pro_inputs)
-	protein_encoding = layers.BatchNormalization()(protein_encoding)
+	protein_encoding = layers.Dense(pro_feat_dim//division_rate, activation = activation, name = 'protein_encoder_1')(pro_inputs)
+	protein_encoding = layers.BatchNormalization(name = 'BatchNormProteinEncode1')(protein_encoding)
 	div_rate_p = division_rate
 	for i in range(N_hidden_protein-1):
 		div_rate_p = div_rate_p * division_rate
-		protein_encoding = layers.Dense(pro_feat_dim//div_rate_p, activation = activation)(protein_encoding)
-		protein_encoding = layers.BatchNormalization()(protein_encoding)
+		protein_encoding = layers.Dense(pro_feat_dim//div_rate_p, activation = activation, name = f'protein_encoder_{i+2}')(protein_encoding)
+		protein_encoding = layers.BatchNormalization(name = f'BatchNormProteinEncode{i+2}')(protein_encoding)
 	# Merge both gene and protein encoders so that I can pass them into a smaller layer
-	merged = layers.Concatenate()([gene_encoding, protein_encoding])
+	merged = layers.Concatenate(name = 'ConcatenateLayer')([gene_encoding, protein_encoding])
 	# This is the "bottleneck layer". It will attempt to extract important features from protein and gene
-	merged = layers.Dense(embedding_dim, activation = activation)(merged)
+	merged = layers.Dense(embedding_dim, activation = activation, name = 'EmbeddingDimDense')(merged)
 	# Make the gene decoder separately, follow the reverse of gene encoder architecture
-	gene_decoder = layers.Dense(gene_feat_dim//div_rate_g, activation = activation)(merged)
-	gene_decoder = layers.BatchNormalization()(gene_decoder)
+	gene_decoder = layers.Dense(gene_feat_dim//div_rate_g, activation = activation, name = 'gene_decoder_1')(merged)
+	gene_decoder = layers.BatchNormalization(name='BatchNormGeneDecode1')(gene_decoder)
 	for i in range(N_hidden_gene-1):
 		div_rate_g = div_rate_g//division_rate
-		gene_decoder = layers.Dense(gene_feat_dim//div_rate_g, activation = activation)(gene_decoder)
-		gene_decoder = layers.BatchNormalization()(gene_decoder)
-	gene_decoder = layers.Dense(gene_feat_dim, activation = activation)(gene_decoder)
+		gene_decoder = layers.Dense(gene_feat_dim//div_rate_g, activation = activation, name = f'gene_decoder_{i+2}')(gene_decoder)
+		gene_decoder = layers.BatchNormalization(name = f'BatchNormGeneDecode{i+2}')(gene_decoder)
+	gene_decoder = layers.Dense(gene_feat_dim, activation = activation, name = 'gene_decoder_last')(gene_decoder)
 	# Make the protien decoder separately, follow the reverse of protein encoder architecture
-	protein_decoder = layers.Dense(pro_feat_dim//div_rate_p, activation=activation)(merged)
-	protein_decoder = layers.BatchNormalization()(protein_decoder)
+	protein_decoder = layers.Dense(pro_feat_dim//div_rate_p, activation=activation, name = 'protein_decoder_1')(merged)
+	protein_decoder = layers.BatchNormalization(name = 'BatchNormProteinDecode1')(protein_decoder)
 	for i in range(N_hidden_protein-1):
 		div_rate_p = div_rate_p//division_rate
-		protein_decoder = layers.Dense(pro_feat_dim//division_rate, activation = activation)(protein_decoder)
-	protein_decoder = layers.Dense(pro_feat_dim, activation = activation)(protein_decoder)
+		protein_decoder = layers.Dense(pro_feat_dim//division_rate, activation = activation, name = f'protein_decoder_{i+2}')(protein_decoder)
+		protein_decoder = layers.BatchNormalization(name = f'BatchNormProteinDecode{i+2}')(protein_decoder)
+	protein_decoder = layers.Dense(pro_feat_dim, activation = activation, name = f'protein_decoder_last')(protein_decoder)
 	# "Compile" the model. Specify that it has gene and protein as input. Output as the gene and protein decoders
 	# This is so that the model can compare the losses properly
 	autodecoder = Model([gene_inputs, pro_inputs], outputs = [gene_decoder,protein_decoder])
@@ -263,7 +265,8 @@ def gene_protein_encoder(pro_train_data, gene_train_data, pro_test_data, gene_te
 		merged, autodecoder = build_all_encoder((pro_train_data.shape), (gene_train_data.shape), embedding_dim = encoding_dim,
 												 N_hidden_gene = N_hidden_gene, N_hidden_protein = N_hidden_protein,
 												 division_rate = division_rate, actvn = actvn)
-		autodecoder.compile(optimizer = 'adam', loss = 'mean_squared_error')
+		autodecoder.compile(optimizer = tf.keras.optimizers.Adam(), loss = 'mean_squared_error')
+		merged.compile(optimizer = tf.keras.optimizers.Adam(), loss = 'mean_squared_error')
 		history = autodecoder.fit([gene_train_data,pro_train_data], [gene_train_data,pro_train_data], epochs = epochs, validation_data=([gene_test_data,pro_test_data], [gene_test_data,pro_test_data]))
 
 		# Save the model
@@ -337,7 +340,8 @@ def custom_decoder(merged, n_feat_dim, node_layers, actvn = 'sigmoid'):
 def build_custom_autoencoders(inputs_list, decoder_list, merged):
 	autodecoder = Model(inputs_list, outputs = decoder_list)
 	merged_m = Model(inputs_list, merged)
-	autodecoder.compile(optimizer = 'adam', loss = 'mean_squared_error')
+	autodecoder.compile(optimizer = tf.keras.optimizers.Adam(), loss = 'mean_squared_error')
+	merged_m.compile(optimizer = tf.keras.optimizers.Adam(), loss = 'mean_squared_error')
 	return autodecoder, merged_m
 
 # A fancier function of build_custom_autoencoders which saves and loads models
@@ -346,7 +350,8 @@ def save_load_build_custom_autoencoders(inputs_list, decoder_list, merged, train
 	if not os.path.exists(f'saved_models/{saved_model_dir_name}/custom_N-{len(inputs_list)}-EPOCHS{epochs}_auto') or override:
 		autodecoder = Model(inputs_list, outputs = decoder_list)
 		merged_m = Model(inputs_list, merged)
-		autodecoder.compile(optimizer = 'adam', loss = 'mean_squared_error')
+		autodecoder.compile(optimizer = tf.keras.optimizers.Adam(), loss = 'mean_squared_error')
+		merged_m.compile(optimizer = tf.keras.optimizers.Adam(), loss = 'mean_squared_error')
 		history = autodecoder.fit(train_data_lst, train_data_lst, epochs = epochs)
 
 		# Save the model
