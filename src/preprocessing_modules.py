@@ -11,6 +11,7 @@ from sklearn.manifold import TSNE
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import hsv_to_rgb
+from sklearn.linear_model import LogisticRegression
 
 # Constants
 data_directory = 'Sample data/first'
@@ -35,6 +36,17 @@ def get_paths_dict(data_directory):
 			rna_data_path = i
 			print('RNA-seq data found!')
 			path_dicts['rna']= rna_data_path
+
+		if 'hto' in i:
+			hto_data_path = i
+			print('HTO data found!')
+			path_dicts['hto']= hto_data_path
+
+		if 'gdo' in i:
+			gdodata_path = i
+			print('GDO data found!')
+			path_dicts['gdo']= gdo_data_path
+
 	return path_dicts
 
 
@@ -89,7 +101,7 @@ def compile_data(data_directory, cell_type_col):
 	return meta_data, pro, rna, cite_seq_data, labels_encoder, labels, data_with_targets
 
 
-def generate_training(data_with_targets, pro, gene_only = False, random_state = 0, train_size = 0.6):
+def generate_training(data_with_targets, pro, gene_only = False, random_state = 0, train_size = 0.4):
 	# Shuffle using train test split
 	# Unbind labels so that we remove this information from the machine learning algo.
 	lab = data_with_targets.iloc[:,-1]
@@ -307,6 +319,11 @@ def custom_concat(encoding_layers, embedding_dim, actvn = 'sigmoid'):
 # It takes some inputs from the encoders to ensure the same number of nodes and layers
 # in the encoder layers
 def custom_decoder(merged, n_feat_dim, node_layers, actvn = 'sigmoid'):
+
+	if node_layers[0] > node_layers[-1]:
+		print('node_layers are not in the right order, reversing it...')
+		node_layers.reverse()
+
 	activation = actvn
 	decoder = layers.Dense(node_layers[0], activation = activation)(merged)
 	decoder = layers.BatchNormalization()(decoder)
@@ -425,6 +442,13 @@ def vis_data2d(left_data_TSNE, right_data_TSNE, train_labels, labels_encoder, co
 	ax[1].legend(bbox_to_anchor=(1.04, 1), loc="upper left")
 	ax[0].legend().set_visible(False)
 	plt.tight_layout()
+
+
+	if not os.path.exists(f'anim/'):
+		os.makedirs('anim/')
+	if not os.path.exists(f'anim/{spacer}/'):
+		os.makedirs(f'anim/{spacer}/')
+
 	plt.savefig(f'anim/{spacer}/2d_plot.png', dpi = 150)
 	plt.show()
 
@@ -468,6 +492,21 @@ def hyper_tune_models(pro_train_data,gene_train_data,pro_test_data, gene_test_da
 		Encoding Dimensions: {val_loss_list[indices]['encoding_dim']}""")
 		
 	return val_loss_list[indices]['epoch'], val_loss_list[indices]['NHG'], val_loss_list[indices]['NHP'], val_loss_list[indices]['divrate'], val_loss_list[indices]['encoding_dim']
+
+def comparison_cluster(test_unencoded, test_encoded, test_labels, N_predict = 2000):
+	logisticRegressor_uncoded = LogisticRegression(max_iter = 400)
+	logisticRegressor_uncoded.fit(test_unencoded, test_labels[:N_predict])
+	score_uncoded = logisticRegressor_uncoded.score(test_unencoded, test_labels[:N_predict])
+
+	logisticRegressor_encoded = LogisticRegression(max_iter = 400)
+	logisticRegressor_encoded.fit(test_encoded, test_labels[:N_predict])
+	score_coded = logisticRegressor_encoded.score(test_encoded, test_labels[:N_predict])
+
+	print(f'Clustering Score of "first-arg data": {score_uncoded}\nClustering Score of "second-arg data": {score_coded}')
+	return score_uncoded, score_coded
+
+
+
 
 '''meta_data, pro, rna, cite_seq_data, labels_encoder, labels, data_with_targets = compile_data(data_directory, cell_type_col)
 train_data, test_data, train_labels, test_labels = generate_training(data_with_targets, pro)
