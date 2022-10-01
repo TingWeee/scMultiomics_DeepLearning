@@ -38,7 +38,7 @@ def get_paths_dict(data_directory):
 			path_dicts['rna']= rna_data_path
 
 		if 'gdo' in i:
-			gdodata_path = i
+			gdo_data_path = i
 			print('GDO data found!')
 			path_dicts['gdo']= gdo_data_path
 
