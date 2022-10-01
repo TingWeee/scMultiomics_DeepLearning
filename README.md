@@ -1,5 +1,6 @@
 # scMultiomics_DeepLearning
 Integrative analysis using autoencoders
+The emergence of single-cell multimodal omics enabled multiple molecular programs to be simultaneously measured in individual cells at unprecedented resolution. However, analysis of sc-multimodal omics data is challenging due to lack of methods (?) that can accurately integrate across multiple data modalities. Here, we present Deep-omics, an approach for integrative analysis using Autoencoders. 
 
 ## Sample Datasets
 ### GSE128639 
@@ -10,7 +11,7 @@ Human bone marrow mononuclear cells - CITE-seq (Stuart et al., 2019)
 Human PBMC - Cite-seq, ECITE-seq (Hao et al., )
 Dataset contains two batches and cells in both batches were annotated to 31 cell types. Batch 1 contains 67k cells (11k RNA, 228 ADT) and batch 2 contains 94k cells (12k RNA, 228 ADT) 
 ### GSE166489
-
+(Ramaswamy et al., 
 ### E-MTAB-10026 
 PBMC CITE-seq dataset (Stephenson et al., ) from healthy individuals and COVID-19 patients. 
 ### Human PBMC-CITE-seq (Kotliarov et., 2020) 
