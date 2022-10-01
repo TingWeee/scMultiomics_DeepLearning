@@ -1,5 +1,5 @@
 # scMultiomics_DeepLearning
-Integrative analysis using autoencoders
+### Integrative analysis using Autoencoders
 The emergence of single-cell multimodal omics enabled multiple molecular programs to be simultaneously measured in individual cells at unprecedented resolution. However, analysis of sc-multimodal omics data is challenging due to lack of methods (?) that can accurately integrate across multiple data modalities. Here, we present Deep-omics, an approach for integrative analysis using Autoencoders. 
 
 ## Sample Datasets
