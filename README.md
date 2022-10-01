@@ -8,9 +8,9 @@ Human bone marrow mononuclear cells - CITE-seq (Stuart et al., 2019)
 ### GSE100866
 CBMC (cord blood mononuclear cells) CITE-seq (Linderman et al., 2022)
 ### GSE153056
-ECCITE-seq (Papalexi et al., 2021)Raw and processed sequencing data is available through the Gene Expression Omnibus (GEO accession number: GSE153056). Processed data is also available through [SeuratData](https://github.com/satijalab/seurat-data). To facilitate access with a single command: InstallData(ds = “thp1.eccite”)
+Human ECCITE-seq (Papalexi et al., 2021) Raw and processed sequencing data is available through the Gene Expression Omnibus (GEO accession number: GSE153056). Processed data is also available through [SeuratData](https://github.com/satijalab/seurat-data). To facilitate access with a single command: InstallData(ds = “thp1.eccite”)
 ### GSE164378
-Human PBMC - Cite-seq, ECITE-seq (Hao et al., )
+Human PBMC - CITE-seq, ECITE-seq (Hao et al., 2021)
 Dataset contains two batches and cells in both batches were annotated to 31 cell types. Batch 1 contains 67k cells (11k RNA, 228 ADT) and batch 2 contains 94k cells (12k RNA, 228 ADT) 
 ### GSE166489
 PBMC CITE-seq (Ramaswamy et al.,2021) with 189 surface antibody phenotypes. Of the 38 samples under GSE166489, 5 included CITE-seq data (2 MIC-C patients and 3 healthy donors)  
