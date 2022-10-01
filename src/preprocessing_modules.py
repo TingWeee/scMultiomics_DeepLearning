@@ -37,11 +37,6 @@ def get_paths_dict(data_directory):
 			print('RNA-seq data found!')
 			path_dicts['rna']= rna_data_path
 
-		if 'hto' in i:
-			hto_data_path = i
-			print('HTO data found!')
-			path_dicts['hto']= hto_data_path
-
 		if 'gdo' in i:
 			gdodata_path = i
 			print('GDO data found!')
@@ -80,7 +75,7 @@ def read_data(data_directory, transpose = True):
 	# This is just to check if all the barcodes in the rna dataset
 	# is found in the protein barcode.
 	assert all(rna.index == pro.index), 'Make sure rna index matches with protein index'
-	
+
 	# if they are, we can combine them column-wise.
 	# so that we have single-celled data for both RNA counts + protein counts
 	cite_seq_data = pd.concat([rna, pro], axis = 1)
