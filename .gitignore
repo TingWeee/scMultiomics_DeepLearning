@@ -2,3 +2,9 @@
 data/GSE164378/hto_scale.csv.gz
 data/GSE164378/protein_scale.csv.gz
 data/GSE164378/rna_scale.csv.gz
+data/GSE164378/raw/rna_scale.csv.gz
+data/GSE164378/raw/protein_scale.csv.gz
+data/GSE164378/raw/GSE164378_sc.meta.data_3P.csv.gz
+data/GSE164378/meta_data_new.csv.gz
+data/GSE164378/protein_new.csv.gz
+data/GSE164378/rna_new.csv.gz

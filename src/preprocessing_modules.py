@@ -47,7 +47,7 @@ def get_paths_dict(data_directory):
 
 # This reads in the data using the dictionary provided in get_paths_dict
 # it returns meta_data, protein, rna and the combined protein rna data
-def read_data(data_directory, transpose = True):
+def read_data(data_directory, transpose = True, set_index = False):
 	path_dicts = get_paths_dict(data_directory)
 	print()
 	print('Reading in the data!')
@@ -72,6 +72,10 @@ def read_data(data_directory, transpose = True):
 	if transpose:
 		pro = pro.T
 		rna = rna.T
+	if set_index != False:
+		rna.set_index(set_index, inplace = True)
+		pro.set_index(set_index, inplace = True)
+		meta_data.set_index(set_index, inplace = True)
 	# This is just to check if all the barcodes in the rna dataset
 	# is found in the protein barcode.
 	assert all(rna.index == pro.index), 'Make sure rna index matches with protein index'
@@ -82,9 +86,9 @@ def read_data(data_directory, transpose = True):
 	return meta_data, pro, rna, cite_seq_data
 
 # This puts labels to our targets.
-def compile_data(data_directory, cell_type_col):
+def compile_data(data_directory, cell_type_col, transpose = True, set_index = False):
 	# Convert cell annotation to integers
-	meta_data, pro, rna, cite_seq_data = read_data(data_directory)
+	meta_data, pro, rna, cite_seq_data = read_data(data_directory, transpose = transpose, set_index = set_index)
 
 	meta_data['celltype'] = meta_data[cell_type_col].str.split().str[0]
 
