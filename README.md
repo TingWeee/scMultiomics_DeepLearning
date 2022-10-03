@@ -44,13 +44,14 @@ gene_train_data,pro_train_data,gene_test_data,pro_test_data = split_training_wit
 ```
 
 To build the autoencoder, just use `gene_protein_encoder()`. 'GSE100866' and 'gene_pro' are supplied here to save the models in the directory 'saved_models/GSE100866/gene_pro_NHG...' 
+
+In this case, we are trying to build an autoencoder with 2 hidden gene layers, 1 hidden protein layer and each layer's nodes is smaller than the previous one by a factor of 4. The bottleneck layer would have 64 nodes, activation functions for all layers would be 'sigmoid' and the number of epochs for the model to train on would be 15.
 ```Python
 history, autodecoder, merged = gene_protein_encoder(pro_train_data,gene_train_data,pro_test_data, gene_test_data, 64, 'GSE100866', 'gene_pro', N_hidden_gene = 2, N_hidden_protein = 1, division_rate = 4, actvn = 'sigmoid', epochs = 15, override = False)
 ```
 
 In order to visualize the cluster, just use the `merged` model which is the encoder portion of the autoencoder to predict. We will use UMAP to visualize our clustering.
 ```Python
-# Perform the TSNE on the bottleneck layer of the encoded data and the non encoded data
 N_predict = 5000
 # Make the encoder do its job. We can now store this as an output to a var
 training_predicted = merged.predict([gene_test_data[:N_predict],pro_test_data[:N_predict]])
