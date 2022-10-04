@@ -47,7 +47,7 @@ def get_paths_dict(data_directory):
 
 # This reads in the data using the dictionary provided in get_paths_dict
 # it returns meta_data, protein, rna and the combined protein rna data
-def read_data(data_directory, transpose = True, set_index = False):
+def read_data(data_directory, transpose = True, set_index = False, use_template_metadata = (False, 'celltype.l2')):
 	path_dicts = get_paths_dict(data_directory)
 	print()
 	print('Reading in the data!')
@@ -58,10 +58,14 @@ def read_data(data_directory, transpose = True, set_index = False):
 	# The transpose function used here is to so that 1 row = 1 cell
 	# rather than 1 column = 1 cell. I rather this shape than the other shape
 	# in pandas anw.
+
+	loaded_meta = False
+
 	for key in path_dicts.keys():
 		if key == 'meta':
 			meta_data = pd.read_csv(path_dicts[key], index_col = 0)
 			print('Loaded metadata')
+			loaded_meta = True
 		if key == 'protein':
 			pro = pd.read_csv(path_dicts[key], index_col = 0)
 			print('Loaded protein data')
@@ -72,6 +76,12 @@ def read_data(data_directory, transpose = True, set_index = False):
 	if transpose:
 		pro = pro.T
 		rna = rna.T
+	if use_template_metadata[0] or not loaded_meta:
+		print('Meta_data not found in the path, supplying a template metadata')
+		# Code to come up with a placeholder metadata
+		meta_data = pd.DataFrame({use_template_metadata[1]:['placeholder' for x in range(len(pro.index))]}).set_index(pro.index)
+
+
 	if set_index != False:
 		rna.set_index(set_index, inplace = True)
 		pro.set_index(set_index, inplace = True)
@@ -86,9 +96,9 @@ def read_data(data_directory, transpose = True, set_index = False):
 	return meta_data, pro, rna, cite_seq_data
 
 # This puts labels to our targets.
-def compile_data(data_directory, cell_type_col, transpose = True, set_index = False):
+def compile_data(data_directory, cell_type_col, transpose = True, set_index = False, use_template_metadata = False):
 	# Convert cell annotation to integers
-	meta_data, pro, rna, cite_seq_data = read_data(data_directory, transpose = transpose, set_index = set_index)
+	meta_data, pro, rna, cite_seq_data = read_data(data_directory, transpose = transpose, set_index = set_index, use_template_metadata = (use_template_metadata, cell_type_col))
 
 	meta_data['celltype'] = meta_data[cell_type_col].str.split().str[0]
 
