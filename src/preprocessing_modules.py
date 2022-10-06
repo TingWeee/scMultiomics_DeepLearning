@@ -147,7 +147,7 @@ def build_autoencoder(input_shape, encoding_dim, N_hidden = 2, division_rate = 4
 	# Might be cool to look at tanh?
 	activation = actvn
 	# Init the tensor using the input shape
-	inputs = layers.Input(shape = (input_shape[1],))
+	inputs = layers.Input(shape = (input_shape[1],), name = 'Gene_Input_Layer')
 	# essentially, the number of genes I'm passing in, so that we can compress properly
 	feat_dim = input_shape[1]
 	# The first fully connected layer to connect out inputs to is making the feature smaller by floor dividing by 4
@@ -190,12 +190,17 @@ def gene_only_encoder(train_data, test_data, encoding_dim, saved_model_dir_name,
 		# Save the model
 		autoencoder.save(f'saved_models/{saved_model_dir_name}/{name}_NHL{N_hidden}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_auto')
 		encoder.save(f'saved_models/{saved_model_dir_name}/{name}_NHL{N_hidden}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_encoder')
+		tf.keras.utils.plot_model(autoencoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(encoder,to_file=f'saved_models/{saved_model_dir_name}/Encoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		
 		return history, autoencoder, encoder
 	else:
 		print('MODEL ALREADY EXISTS, TO RETRAIN, SET PARAM "override = True"')
 		autoencoder = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/{name}_NHL{N_hidden}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_auto')
 		encoder = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/{name}_NHL{N_hidden}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_encoder')
-
+		tf.keras.utils.plot_model(autoencoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(encoder,to_file=f'saved_models/{saved_model_dir_name}/Encoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		
 		return '', autoencoder, encoder
 # Like previously, I'm asking for the shapes of my genes and protein data
 
@@ -204,7 +209,7 @@ def build_all_encoder(protein_shape, gene_shape, embedding_dim, actvn = 'sigmoid
 	activation = actvn
 	# Make the layers for my gene encoder
 	# This is to get the gene inputs
-	gene_inputs = layers.Input(shape = (gene_shape[1],))
+	gene_inputs = layers.Input(shape = (gene_shape[1],), name = 'Gene_Input_Layer')
 	gene_feat_dim = gene_shape[1]
 	# Layer architecture
 	'''
@@ -222,7 +227,7 @@ def build_all_encoder(protein_shape, gene_shape, embedding_dim, actvn = 'sigmoid
 		gene_encoding = layers.BatchNormalization(name=f'BatchNormGeneEncode{i+2}')(gene_encoding)
 	# Make the layers for my protein encoder
 	# This is to get the protein inputs
-	pro_inputs = layers.Input(shape = (protein_shape[1],))
+	pro_inputs = layers.Input(shape = (protein_shape[1],), name = 'Protein_Input_Layer')
 	pro_feat_dim = protein_shape[1]
 	
 	# Layer architecture
@@ -281,13 +286,16 @@ def gene_protein_encoder(pro_train_data, gene_train_data, pro_test_data, gene_te
 		# Save the model
 		autodecoder.save(f'saved_models/{saved_model_dir_name}/{name}_NHG{N_hidden_gene}_NHP{N_hidden_protein}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_auto')
 		merged.save(f'saved_models/{saved_model_dir_name}/{name}_NHG{N_hidden_gene}_NHP{N_hidden_protein}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_merged')
+		tf.keras.utils.plot_model(autodecoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(merged,to_file=f'saved_models/{saved_model_dir_name}/Encoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
 		return history, autodecoder, merged
 
 	else:
 		print('MODEL ALREADY EXISTS, TO RETRAIN, SET PARAM "override = True"')
 		autodecoder = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/{name}_NHG{N_hidden_gene}_NHP{N_hidden_protein}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_auto')
 		merged = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/{name}_NHG{N_hidden_gene}_NHP{N_hidden_protein}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_merged')
-
+		tf.keras.utils.plot_model(autodecoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(merged,to_file=f'saved_models/{saved_model_dir_name}/Encoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
 		return '', autodecoder, merged
 
 ###############
@@ -297,61 +305,93 @@ def gene_protein_encoder(pro_train_data, gene_train_data, pro_test_data, gene_te
 
 # Generalise the Encoder Layer Building
 # Make it return stuff I need later for concat, decoding and model building
-def custom_encoder(n_shape, actvn = 'sigmoid', n_hidden_layer = 2, division_rate=4):
+def build_custom_autoencoders(concatenated_shapes, saved_model_dir_name, name, train_data_lst,epochs = 15, override=  False,
+								n_hidden_layers = (2,1), division_rate = 4, actvn = 'sigmoid', embedding_dim = 64):
+	# Check if this is legal
+	if len(concatenated_shapes) != len(n_hidden_layers):
+		print(f'Length of concatenated_shapes {len(concatenated_shapes)} do not match the length of n_hidden_layers {len(n_hidden_layers)}')
+		print('You need to supply n_hidden_layers such that each element corresponds to each data')
+		return None
+
+	# concatenated_shapes would be a list of shapes regarding how many n-omics.
+	# eg concatenated_shapes = [gene_train.shape, pro_train.shape]
 	activation = actvn
 
-	inputs = layers.Input(shape = (n_shape[1],))
-	n_feat_dim = n_shape[1]
+	# Store everything sequentially
+	input_layers_list = []
+	n_feat_dim_list = []
+	global_node_layers = []
+	encoding_model_list = []
+	autoencoder_model_list = []
 
-	node_layers = [n_feat_dim//division_rate]
-	# Initialize the first dense layer
-	encoding = layers.Dense(n_feat_dim//division_rate, activation = activation)(inputs)
-	encoding = layers.BatchNormalization()(encoding)
+	# This is for encoding #
+	for index, data_shape in enumerate(concatenated_shapes):
+		inputs = layers.Input(shape = (data_shape[1],))
+		n_feat_dim = data_shape[1]
 
-	div_rate_g = division_rate
+		input_layers_list.append(inputs)
+		n_feat_dim_list.append(n_feat_dim)
 
-	for i in range(n_hidden_layer-1):
-		div_rate_g = div_rate_g*division_rate
-		encoding = layers.Dense(n_feat_dim//div_rate_g, activation = activation)(encoding)
+		node_layers = [n_feat_dim//division_rate]
+		# Initialize the first dense layer
+		encoding = layers.Dense(n_feat_dim//division_rate, activation = activation)(inputs)
 		encoding = layers.BatchNormalization()(encoding)
-		node_layers.append(n_feat_dim//div_rate_g)
-	return encoding, n_feat_dim, node_layers, inputs
 
-# Generalise the concatenation, supply the embedding dimensions here
-# Make it return the merged layers
-def custom_concat(encoding_layers, embedding_dim, actvn = 'sigmoid'):
-	activation = actvn
-	# encoding_layers should be a list of encoding layers
-	merged = layers.Concatenate()(encoding_layers)
+		div_rate_g = division_rate
+
+		for i in range(n_hidden_layers[index]-1):
+			div_rate_g = div_rate_g*division_rate
+			encoding = layers.Dense(n_feat_dim//div_rate_g, activation = activation)(encoding)
+			encoding = layers.BatchNormalization()(encoding)
+			node_layers.append(n_feat_dim//div_rate_g)
+
+		global_node_layers.append(node_layers)
+		encoding_model_list.append(encoding)
+
+	# This is for concatenation and merging #
+	merged = layers.Concatenate()(encoding_model_list)
 	merged = layers.Dense(embedding_dim, activation = activation)(merged)
-	return merged
 
-# Generalise the decoder layer building
-# Make it return the decoder.
-# It takes some inputs from the encoders to ensure the same number of nodes and layers
-# in the encoder layers
-def custom_decoder(merged, n_feat_dim, node_layers, actvn = 'sigmoid'):
+	# This is for decoder #
+	for index in range(len(concatenated_shapes)):
+		node_layers = global_node_layers[index]
+		if node_layers[0] > node_layers[-1]:
+			node_layers.reverse()
 
-	if node_layers[0] > node_layers[-1]:
-		print('node_layers are not in the right order, reversing it...')
-		node_layers.reverse()
 
-	activation = actvn
-	decoder = layers.Dense(node_layers[0], activation = activation)(merged)
-	decoder = layers.BatchNormalization()(decoder)
-	for nodes in node_layers[1:]:
-		decoder = layers.Dense(nodes, activation = activation)(decoder)
+		decoder = layers.Dense(node_layers[0], activation = activation)(merged)
 		decoder = layers.BatchNormalization()(decoder)
-	decoder = layers.Dense(n_feat_dim, activation = activation)(decoder)
-	return decoder
+		for nodes in node_layers[1:]:
+			decoder = layers.Dense(nodes, activation = activation)(decoder)
+			decoder = layers.BatchNormalization()(decoder)
+		decoder = layers.Dense(n_feat_dim_list[index], activation = activation)(decoder)
 
-#Builds the model based on the inputs, finalised decoders and the merged layer.
-def build_custom_autoencoders(inputs_list, decoder_list, merged):
-	autodecoder = Model(inputs_list, outputs = decoder_list)
-	merged_m = Model(inputs_list, merged)
-	autodecoder.compile(optimizer = tf.keras.optimizers.Adam(), loss = 'mean_squared_error')
-	merged_m.compile(optimizer = tf.keras.optimizers.Adam(), loss = 'mean_squared_error')
-	return autodecoder, merged_m
+		autoencoder_model_list.append(decoder)
+
+
+	if not os.path.exists(f'saved_models/{saved_model_dir_name}/custom_N-{len(input_layers_list)}-EPOCHS{epochs}_auto') or override:
+		autodecoder_model = Model(input_layers_list, outputs = autoencoder_model_list)
+		merged_m = Model(input_layers_list, outputs = merged)
+		autodecoder_model.compile(optimizer = tf.keras.optimizers.Adam(), loss = 'mean_squared_error')
+		merged_m.compile(optimizer = tf.keras.optimizers.Adam(), loss = 'mean_squared_error')
+
+		history = autodecoder.fit(train_data_lst, train_data_lst, epochs = epochs)
+		# Save the model
+		autodecoder_model.save(f'saved_models/{saved_model_dir_name}/custom_N-{len(input_layers_list)}-EPOCHS{epochs}_auto')
+		merged_m.save(f'saved_models/{saved_model_dir_name}/custom_N-{len(input_layers_list)}-EPOCHS{epochs}_merged')
+		tf.keras.utils.plot_model(autodecoder_model,to_file=f'saved_models/{saved_model_dir_name}/autodecoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(merged_m,to_file=f'saved_models/{saved_model_dir_name}/Encoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		return history, autodecoder_model, merged_m
+
+	else:
+		print('MODEL ALREADY EXISTS, TO RETRAIN, SET PARAM "override = True"')
+		autodecoder = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/custom_N-{len(input_layers_list)}-EPOCHS{epochs}_auto')
+		merged_m = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/custom_N-{len(input_layers_list)}-EPOCHS{epochs}_merged')
+
+		tf.keras.utils.plot_model(autodecoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(merged_m,to_file=f'saved_models/{saved_model_dir_name}/Encoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		return '', autodecoder, merged_m
+
 
 # A fancier function of build_custom_autoencoders which saves and loads models
 # Because I don't want to train the model everytime
