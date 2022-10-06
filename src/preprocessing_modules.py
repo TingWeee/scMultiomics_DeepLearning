@@ -190,16 +190,16 @@ def gene_only_encoder(train_data, test_data, encoding_dim, saved_model_dir_name,
 		# Save the model
 		autoencoder.save(f'saved_models/{saved_model_dir_name}/{name}_NHL{N_hidden}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_auto')
 		encoder.save(f'saved_models/{saved_model_dir_name}/{name}_NHL{N_hidden}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_encoder')
-		tf.keras.utils.plot_model(autoencoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
-		tf.keras.utils.plot_model(encoder,to_file=f'saved_models/{saved_model_dir_name}/Encoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(autoencoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder_geneonly.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(encoder,to_file=f'saved_models/{saved_model_dir_name}/Encoder_geneonly.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
 		
 		return history, autoencoder, encoder
 	else:
 		print('MODEL ALREADY EXISTS, TO RETRAIN, SET PARAM "override = True"')
 		autoencoder = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/{name}_NHL{N_hidden}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_auto')
 		encoder = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/{name}_NHL{N_hidden}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_encoder')
-		tf.keras.utils.plot_model(autoencoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
-		tf.keras.utils.plot_model(encoder,to_file=f'saved_models/{saved_model_dir_name}/Encoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(autoencoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder_geneonly.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(encoder,to_file=f'saved_models/{saved_model_dir_name}/Encoder_geneonly.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
 		
 		return '', autoencoder, encoder
 # Like previously, I'm asking for the shapes of my genes and protein data
@@ -286,16 +286,16 @@ def gene_protein_encoder(pro_train_data, gene_train_data, pro_test_data, gene_te
 		# Save the model
 		autodecoder.save(f'saved_models/{saved_model_dir_name}/{name}_NHG{N_hidden_gene}_NHP{N_hidden_protein}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_auto')
 		merged.save(f'saved_models/{saved_model_dir_name}/{name}_NHG{N_hidden_gene}_NHP{N_hidden_protein}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_merged')
-		tf.keras.utils.plot_model(autodecoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
-		tf.keras.utils.plot_model(merged,to_file=f'saved_models/{saved_model_dir_name}/Encoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(autodecoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder_gp.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(merged,to_file=f'saved_models/{saved_model_dir_name}/Encoder_gp.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
 		return history, autodecoder, merged
 
 	else:
 		print('MODEL ALREADY EXISTS, TO RETRAIN, SET PARAM "override = True"')
 		autodecoder = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/{name}_NHG{N_hidden_gene}_NHP{N_hidden_protein}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_auto')
 		merged = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/{name}_NHG{N_hidden_gene}_NHP{N_hidden_protein}_DIV{division_rate}_EPOCHS{epochs}_EncodingDim{encoding_dim}_merged')
-		tf.keras.utils.plot_model(autodecoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
-		tf.keras.utils.plot_model(merged,to_file=f'saved_models/{saved_model_dir_name}/Encoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(autodecoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder_gp.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(merged,to_file=f'saved_models/{saved_model_dir_name}/Encoder_gp.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
 		return '', autodecoder, merged
 
 ###############
@@ -375,12 +375,12 @@ def build_custom_autoencoders(concatenated_shapes, saved_model_dir_name, name, t
 		autodecoder_model.compile(optimizer = tf.keras.optimizers.Adam(), loss = 'mean_squared_error')
 		merged_m.compile(optimizer = tf.keras.optimizers.Adam(), loss = 'mean_squared_error')
 
-		history = autodecoder.fit(train_data_lst, train_data_lst, epochs = epochs)
+		history = autodecoder_model.fit(train_data_lst, train_data_lst, epochs = epochs)
 		# Save the model
 		autodecoder_model.save(f'saved_models/{saved_model_dir_name}/custom_N-{len(input_layers_list)}-EPOCHS{epochs}_auto')
 		merged_m.save(f'saved_models/{saved_model_dir_name}/custom_N-{len(input_layers_list)}-EPOCHS{epochs}_merged')
-		tf.keras.utils.plot_model(autodecoder_model,to_file=f'saved_models/{saved_model_dir_name}/autodecoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
-		tf.keras.utils.plot_model(merged_m,to_file=f'saved_models/{saved_model_dir_name}/Encoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(autodecoder_model,to_file=f'saved_models/{saved_model_dir_name}/autodecoder_custom.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(merged_m,to_file=f'saved_models/{saved_model_dir_name}/Encoder_custom.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
 		return history, autodecoder_model, merged_m
 
 	else:
@@ -388,8 +388,8 @@ def build_custom_autoencoders(concatenated_shapes, saved_model_dir_name, name, t
 		autodecoder = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/custom_N-{len(input_layers_list)}-EPOCHS{epochs}_auto')
 		merged_m = tf.keras.models.load_model(f'saved_models/{saved_model_dir_name}/custom_N-{len(input_layers_list)}-EPOCHS{epochs}_merged')
 
-		tf.keras.utils.plot_model(autodecoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
-		tf.keras.utils.plot_model(merged_m,to_file=f'saved_models/{saved_model_dir_name}/Encoder.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(autodecoder,to_file=f'saved_models/{saved_model_dir_name}/autodecoder_custom.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
+		tf.keras.utils.plot_model(merged_m,to_file=f'saved_models/{saved_model_dir_name}/Encoder_custom.png',show_shapes=True,show_layer_names=True,dpi=150,show_layer_activations=True)
 		return '', autodecoder, merged_m
 
 
