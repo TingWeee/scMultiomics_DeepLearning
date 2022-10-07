@@ -3,8 +3,7 @@
 The emergence of single-cell multimodal omics enabled multiple molecular programs to be simultaneously measured in individual cells at unprecedented resolution. However, analysis of sc-multimodal omics data is challenging due to lack of methods (?) that can accurately integrate across multiple data modalities. Here, we present Deep-N-omics, an approach for integrative analysis using Autoencoders. 
 
 
-## Methods
-### Preprocessing
+## Methods: Preprocessing
 All data sourced from [GEO](https://www.ncbi.nlm.nih.gov/geo/) were processed in R v4.1.2 using `Seurat`. The count matrix of both RNA and ADT data (if any) were loaded in with their respective barcodes, either using `Seurat::Read10X` or `readr::read_csv`. A `SeuratObject` was created with the RNA-seq data and additional assays from ADT were loaded in using `CreateAssayObject(counts = ds.adt)`. The counts for both RNA-seq and ADT seq can now be normalized, and scaled using `ds %>% NormalizeData() %>% FindVariableFeatures() %>% ScaleData()`. RNA and ADT normalized & count data were saved and then processed in Python using our autoencoders.
 
 **NOTE**: We recommend saving the RNA-seq Count data with the filename `rna_scaled.csv.gz` and `protein_scaled.csv.gz`. At the very least, the file name should contain `rna` and `protein`. The data should also be either one of the following formats when loaded in using Python's `pandas`:
@@ -28,7 +27,7 @@ or
 | **Cell_Barcode 2** | 1.5   | -1.2  | 1.5  | -1.2 |
 | **...**            | -1.2  | 1     | -1.2 | 1    |
 
-#### Generating Metadata
+### Generating Metadata
 In the event that metadata aka cell identity of immune cells are not given, we highly recommend generating one using `Seurat` as per in this [vignette](https://satijalab.org/seurat/articles/multimodal_reference_mapping.html). However, it is fine if you choose not to use one.
 
 1. Transform the `SeuratObject` created earlier with `SCTransform()`
@@ -38,7 +37,7 @@ In the event that metadata aka cell identity of immune cells are not given, we h
 
 **NOTE**: It is imperative that the normalized and scaled data of RNA and ADT to have the words 'rna' and 'protein' be in the filename and no other files. Metadata should also be supplied containing cell identities for each barcode (file name containing 'meta').
 
-### Using Tensorflow version of Deep-N-Omics
+## Methods: Getting data ready for deep learning using Deep-N-Omics 
 Our python package offers both the Tensorflow and Pytorch implementation of autoencoders. In order to do integrative analysis of CITE-seq data (di-omics), the following can be done, for example GSE100866.
 
 First set the data directory that containts, `rna_scaled.csv.gz`, `protein_scaled.csv.gz` and `meta_data.csv.gz` (optional).
@@ -72,6 +71,30 @@ train_data, test_data, train_labels, test_labels = generate_training(data_with_t
 gene_train_data,pro_train_data,gene_test_data,pro_test_data = split_training_with_labels(train_data, test_data, pro)
 ```
 
+## Methods: Deep Learning with Deep-N-Omics 
+### Mono-omic data
+If you only have or choose to use mono-omic data (such as RNA expression from scRNA-seq), you can use the function `gene_only_encoder()`. 'GSE100866' and 'gene_only' are supplied here to save the models in the directory 'saved_models/GSE100866/gene_only_NHL...' 
+
+In this case, we are expecting to have 2 hidden layers (in `N_hidden`) before the bottleneck layer that contains 64 nodes. Each layer would have 4 (in `division_rate`) times less nodes than the previous nodes. 
+
+
+`gene_only_encoder` returns the following in order:
+
+1. `history`: If this is a newly trained model, you can check the validation loss and training loss of the model for each epoch by running `print(history.history['val_loss'])` or `print(history.history['loss'])`. If this model was loaded from a saved model, it returns `'-'`
+2. `autoencoder`: This is the full autoencoder with the output layer having the same number of nodes as the input layer.
+3. `encoder`: This is the same autoencoder as `autoencoder`, except the last layer of this model is the bottleneck layer.
+
+**WARNING**: If a `ValueError` is raised stating `"Failed to convert a NumPy array to a Tensor (Unsupported object type float)"`, this means that somewhere in `data_with_targets`, there is a column that is a string. We recommend checking the variables returned from `compile_data` and set the index manually using `df.set_index('BARCODE_COLUMN',inplace = True)`
+
+```Python
+history, autoencoder, encoder = gene_only_encoder(train_data, test_data, 64, 'GSE100866', 'gene_only', N_hidden = 2, division_rate = 4, actvn = 'sigmoid', epochs = 15)
+```
+
+After training, `plot_model()` was called to give a visual representation of the architecture of this model as shown below:
+
+<img src="saved_models/GSE100866/autodecoder_geneonly.png" height="1000">
+
+### Di-omic Data
 To build the autoencoder, just use `gene_protein_encoder()`. 'GSE100866' and 'gene_pro' are supplied here to save the models in the directory 'saved_models/GSE100866/gene_pro_NHG...' 
 
 In this case, we are trying to build an autoencoder with 2 hidden gene layers, 1 hidden protein layer and each layer's nodes is smaller than the previous one by a factor of 4. The bottleneck layer would have 64 nodes, activation functions for all layers would be 'sigmoid' and the number of epochs for the model to train on would be 15.
@@ -86,6 +109,10 @@ In this case, we are trying to build an autoencoder with 2 hidden gene layers, 1
 ```Python
 history, autodecoder, merged = gene_protein_encoder(pro_train_data,gene_train_data,pro_test_data, gene_test_data, 64, 'GSE100866', 'gene_pro', N_hidden_gene = 2, N_hidden_protein = 1, division_rate = 4, actvn = 'sigmoid', epochs = 15, override = False)
 ```
+After training, `plot_model()` was called to give a visual representation of the architecture of this model as shown below:
+
+<img src="saved_models/GSE100866/autodecoder_gp.png" height="1000">
+
 
 In order to visualize the cluster, just use the `merged` model which is the encoder portion of the autoencoder to predict. We will use UMAP to visualize our clustering.
 ```Python
@@ -116,6 +143,28 @@ vis_data2d(train_encoded_gp_UMAP, train_encoded_Control_UMAP, test_labels, label
 
 Other methods such as tSNE and `PyMDE` (Minimum-Distortion Embedding) also works as shown in our notebook.
 
+
+### N-omic Data
+If you are interested in performing more than di-omic integrative analysis, we provide an implementation for this.
+
+The function for this would be `build_custom_autoencoders()`. Implementation of this might be a little tricky, but in this example, we show that we can implement a di-omic integrative analysis using this method.
+
+`build_custom_autoencoders()` takes in a few arguments:
+
+
+1. `concatenated_shapes` argument takes in a list of shapes. For our example, it is a list of shapes of `gene_train_data` and `pro_train_data`.
+2. `saved_model_dir_name` which is the folder in which the model will be saved, it is identical to the mono-omic and di-omic implementation. 
+3. `train_data_lst` argument takes in a list of training data. For our example, it is `gene_train_data` and `pro_train_data`. They need to be in the same order as in `concatenated_shapes`.
+4.`n_hidden_layers` argument takes in a list or a tuple of hidden layers to use for each omic data. In our example, `(2,1)` means 2 hidden layers for the gene data and 1 hidden layer for the protein data.
+
+```Python
+_, __, merged_m = build_custom_autoencoders([gene_train_data.shape,pro_train_data.shape], 'GSE100866', '', [gene_train_data,pro_train_data],epochs = 15, override=  True,
+                          n_hidden_layers = (2,1), division_rate = 4, actvn = 'sigmoid', embedding_dim = 64)
+```
+
+After training, `plot_model()` was called to give a visual representation of the architecture of this model as shown below: Note that it is similar, if not identical to the model plot as di-omic.
+
+<img src="saved_models/GSE100866/autodecoder_custom.png" height="1000">
 
 ## Sample Datasets
 ### Datasets used to validate clustering ability of our autoencoder.

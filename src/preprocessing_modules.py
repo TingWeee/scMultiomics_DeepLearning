@@ -147,7 +147,7 @@ def build_autoencoder(input_shape, encoding_dim, N_hidden = 2, division_rate = 4
 	# Might be cool to look at tanh?
 	activation = actvn
 	# Init the tensor using the input shape
-	inputs = layers.Input(shape = (input_shape[1],), name = 'Gene_Input_Layer')
+	inputs = layers.Input(shape = (input_shape[1],), name = 'gene_input_layer')
 	# essentially, the number of genes I'm passing in, so that we can compress properly
 	feat_dim = input_shape[1]
 	# The first fully connected layer to connect out inputs to is making the feature smaller by floor dividing by 4
@@ -305,7 +305,7 @@ def gene_protein_encoder(pro_train_data, gene_train_data, pro_test_data, gene_te
 
 # Generalise the Encoder Layer Building
 # Make it return stuff I need later for concat, decoding and model building
-def build_custom_autoencoders(concatenated_shapes, saved_model_dir_name, name, train_data_lst,epochs = 15, override=  False,
+def build_custom_autoencoders(concatenated_shapes, saved_model_dir_name, train_data_lst,epochs = 15, override=  False,
 								n_hidden_layers = (2,1), division_rate = 4, actvn = 'sigmoid', embedding_dim = 64):
 	# Check if this is legal
 	if len(concatenated_shapes) != len(n_hidden_layers):
