@@ -37,6 +37,16 @@ In the event that metadata aka cell identity of immune cells are not given, we h
 
 **NOTE**: It is imperative that the normalized and scaled data of RNA and ADT to have the words 'rna' and 'protein' be in the filename and no other files. Metadata should also be supplied containing cell identities for each barcode (file name containing 'meta').
 
+## Installing required dependencies
+To fully utilize our package, it is recommended you install the required dependencies found in our `requirements.txt` by either installing them through `pip` or `conda`.
+
+```bash
+python -m pip install -r requirements.txt
+```
+or 
+```bash
+conda install --file requirements.txt
+```
 ## Methods: Getting data ready for deep learning using Deep-N-Omics 
 Our python package offers both the Tensorflow and Pytorch implementation of autoencoders. In order to do integrative analysis of CITE-seq data (di-omics), the following can be done, for example GSE100866.
 
@@ -141,8 +151,38 @@ vis_data2d(train_encoded_gp_UMAP, train_encoded_Control_UMAP, test_labels, label
 ![pic](anim/GSE100866/gene_pro_Control_UMAP/2d_plot.png)
 
 
-Other methods such as tSNE and `PyMDE` (Minimum-Distortion Embedding) also works as shown in our notebook.
+Other methods such as tSNE and `pyMDE` (Minimum-Distortion Embedding) also works as shown in our notebook.
 
+### Using other embedding methods such as `pyMDE`
+Using other embedding methods instead of UMAP using our framework is very simple. Here we demonstrate the ease of use from the previous example:
+
+```Python
+N_predict = 5000
+# Make the encoder do its job. We can now store this as an output to a var
+training_predicted = merged.predict([gene_test_data[:N_predict],pro_test_data[:N_predict]])
+
+# Comment out the UMAP code
+#reducer = umap.UMAP()
+#train_encoded_gp_UMAP = reducer.fit_transform(training_predicted)
+#train_encoded_Control_UMAP = reducer.fit_transform(test_data[:N_predict])
+
+# Add the pyMDE code
+mde_predicted = pymde.preserve_neighbors(torch.Tensor(training_predicted), verbose=False)
+embedding_predicted = mde_predicted.embed()
+
+mde_control = pymde.preserve_neighbors(torch.Tensor(test_data[:N_predict].to_numpy()), verbose=False)
+embedding_control = mde_control.embed()
+
+
+# Comment out the UMAP code and add the respective pyMDE code
+color = generate_color(labels_encoder, labels)
+color_map = generate_colormap(color, labels_encoder, labels)
+# left, right = comparison_cluster(train_encoded_gp_UMAP, train_encoded_Control_UMAP,test_labels, N_predict = N_predict)
+left, right = comparison_cluster(embedding_predicted, embedding_control,test_labels, N_predict = N_predict)
+vis_data2d(embedding_predicted, embedding_control, test_labels, labels_encoder, color_map, N_predict, 
+           left_label=f'Gene Protein MDE-Score: {left}', right_label=f'Control MDE-Score: {right}', spacer = 'GSE100866/gene_pro_Control_MDE')
+```
+![pic](anim/GSE100866/geneOnly_Mde/2d_plot.png)
 
 ### N-omic Data
 If you are interested in performing more than di-omic integrative analysis, we provide an implementation for this.
@@ -170,30 +210,28 @@ After training, `plot_model()` was called to give a visual representation of the
 ### Datasets used to validate clustering ability of our autoencoder.
 #### GSE128639 
 Human bone marrow mononuclear cells - CITE-seq (Stuart et al., 2019). 25 antibodies described in ADT.
-- [GE Link](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE128639)
+- [GEO Link](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE128639)
 - [Article](https://doi.org/10.1016/j.cell.2019.05.031)
 - Processed Data is also available through [SeuratData](https://github.com/satijalab/seurat-data). Can be accessed with a single command: `InstallData(ds = 'bmcite')`
 #### GSE100866
 CBMC (cord blood mononuclear cells) CITE-seq (Stoeckius et al., 2017). 13 antibodies described in ADT.
-- [GE Link](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE100866)
+- [GEO Link](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE100866)
 - [Article](https://www.nature.com/articles/nmeth.4380)
 - Processed Data is also available through [SeuratData](https://github.com/satijalab/seurat-data). Can be accessed with a single command: `InstallData(ds = 'cbmc')`
 #### GSE153056
 Human ECCITE-seq (Papalexi et al., 2021). 
-- [GE Link](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE153056)
+- [GEO Link](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE153056)
 - [Article](https://www.nature.com/articles/s41588-021-00778-2)
 - Processed data is also available through [SeuratData](https://github.com/satijalab/seurat-data). Can be accessed with single command: `InstallData(ds = “thp1.eccite”)`
 #### GSE164378
 Human PBMC - CITE-seq, ECITE-seq (Hao et al., 2021)
 Dataset contains two batches and cells in both batches were annotated to 31 cell types. Batch 1 contains 67k cells (11k RNA, 228 ADT) and batch 2 contains 94k cells (12k RNA, 228 ADT). Celltype identification is given in GEO. Due to the large dataset, ~80,000 cells were randomly selected and processed for our project.
-- [GE Link](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE164378)
+- [GEO Link](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE164378)
 - [Article](https://www.ncbi.nlm.nih.gov/pmc/articles/pmid/34062119/)
 ### Datasets used to attempt to gain additional biological insights using our autoencoder.
 #### GSE166489
 PBMC CITE-seq (Ramaswamy et al.,2021) with 189 surface antibody phenotypes. Of the 38 samples under GSE166489, 5 included CITE-seq data (2 MIC-C patients and 3 healthy donors). The MIC-C patients and Healthy Donors' cell metadata was processed separately in Seurat as per in this [vignette](https://satijalab.org/seurat/articles/multimodal_reference_mapping.html)
-- [GE Link](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE166489)
+- [GEO Link](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE166489)
 - [Article](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8043654/)
-#### E-MTAB-10026 
-PBMC CITE-seq dataset (Stephenson et al., 2021 ) from healthy individuals and COVID-19 patients. 
 #### Human PBMC-CITE-seq (Kotliarov et., 2020) 
 CITE-seq profiling of 82 surface proteins and transcriptomes of 53,201 single cells from healthy high and low influenza-vaccination responders. Dataset can be downloaded from [here](https://nih.figshare.com/collections/Data_and_software_code_repository_for_Broad_immune_activation_underlies_shared_set_point_signatures_for_vaccine_responsiveness_in_healthy_individuals_and_disease_activity_in_patients_with_lupus_Kotliarov_Y_Sparks_R_et_al_Nat_Med_DOI_https_d/4753772)
