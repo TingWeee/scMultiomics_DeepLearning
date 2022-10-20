@@ -12,6 +12,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import hsv_to_rgb
 from sklearn.linear_model import LogisticRegression
+import sklearn.neighbors
+import seaborn as sns
+from sknetwork.clustering import Louvain
 
 # Constants
 data_directory = 'Sample data/first'
@@ -559,8 +562,25 @@ def comparison_cluster(test_unencoded, test_encoded, test_labels, N_predict = 20
 	print(f'Clustering Score of "first-arg data": {score_uncoded}\nClustering Score of "second-arg data": {score_coded}')
 	return score_uncoded, score_coded
 
+def find_clusters(data, n_neighbours = 20):
+	knn_graph = sklearn.neighbors.kneighbors_graph(data, n_neighbours)
+	louvain = Louvain()
+	labels = louvain.fit_transform(knn_graph)
 
+	return labels
 
+def plot_custom_labels(data, labels, spacer, other_spacer = '',x_axis = 0, y_axis = 1, s = 3):
+	df = pd.DataFrame(data)
+	df['labels'] = labels
+	df = df.astype({'labels':str})
+
+	df = df.rename({0:x_axis, 1:y_axis}, axis = 1)
+
+	sns.scatterplot(x = x_axis, y = y_axis, data = df, hue = 'labels', s = s)
+	plt.legend(bbox_to_anchor=(1.04,1), loc = 'upper left')
+	plt.tight_layout()
+	plt.savefig(f'anim/{spacer}/custom_labels_plot_{other_spacer}.png', dpi = 150)
+	plt.show()
 
 '''meta_data, pro, rna, cite_seq_data, labels_encoder, labels, data_with_targets = compile_data(data_directory, cell_type_col)
 train_data, test_data, train_labels, test_labels = generate_training(data_with_targets, pro)
