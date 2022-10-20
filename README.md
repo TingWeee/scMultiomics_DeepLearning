@@ -28,7 +28,7 @@ or
 | **...**            | -1.2  | 1     | -1.2 | 1    |
 
 ### Generating Metadata
-In the event that metadata aka cell identity of immune cells are not given, we highly recommend generating one using `Seurat` as per in this [vignette](https://satijalab.org/seurat/articles/multimodal_reference_mapping.html). However, it is fine if you choose not to use one.
+In the event that metadata aka cell identity of immune cells are not given, we highly recommend generating one using `Seurat` as per in this [vignette](https://satijalab.org/seurat/articles/multimodal_reference_mapping.html). However, it is fine if you choose not to use one, we would show an implementation on this case separately.
 
 1. Transform the `SeuratObject` created earlier with `SCTransform()`
 2. `FindTransferAnchors` on this `SeuratObject` and the reference data `pbmc_multimodal.h5seurat` from `Seurat`
@@ -56,8 +56,6 @@ data_directory = 'Sample Datasets/GSE100866'
 ```
 
 Next, using the function `compile_data()` from our package, all the data would be loaded. In the event that the protein and rna files have mismatched barcodes, an error would be thrown.
-
-If you choose to not use a metadata file or lack one, supplying `use_template_metadata = True` into `compile_data()` would allow the generation of a template metadata for visualization purposes. The metadata would only contain the barcodes of each cell as the index and a target of 'placeholder' for visualization only.
 
 `compile_data()` would use our other function `read_data()` to read in the data. `compile_data()` would also utilize the meta_data in order to come up with non-wordy celltype identifiers before pushing to `sklearn.preprocessing.LabelEncoder()`. 
 
@@ -139,8 +137,6 @@ train_encoded_Control_UMAP = reducer.fit_transform(test_data[:N_predict])
 `comparison_cluster()` is a function that fits a logistic regressor with the UMAP-ed data and returns the score of the cluster as a quantitative proxy for how well the clustering performs.
 
 `vis_data2d()` will plot the points given by the dimensionality reduction method (in this case UMAP), given the respective labels, labels_encoder, colormap, number of predictons and the data from `comparison_cluster()`
-
-**WARNING**: If you are used `use_template_metadata = True` previously, please do not run `comparison_cluster()` as it expects at least 2 classes or 2 distinct cell types.
 ```Python
 color = generate_color(labels_encoder, labels)
 color_map = generate_colormap(color, labels_encoder, labels)
@@ -205,6 +201,75 @@ _, __, merged_m = build_custom_autoencoders([gene_train_data.shape,pro_train_dat
 After training, `plot_model()` was called to give a visual representation of the architecture of this model as shown below: Note that it is similar, if not identical to the model plot as di-omic.
 
 <img src="saved_models/GSE100866/autodecoder_custom.png" height="1000">
+
+### No Meta-Data
+
+If you choose to not use a metadata file or lack one, supplying `use_template_metadata = True` into `compile_data()` would allow the generation of a template metadata for visualization purposes. The metadata would only contain the barcodes of each cell as the index and a target of 'placeholder' for visualization only.
+
+The following example is to simulate the absence of metadata for the dataset GSE100866. We would first call `compile_data()` with the argument `use_template_metadata = True`.
+```Python
+data_directory = 'Sample Datasets/GSE100866'
+# Use use_template_metadata = True here to use a template one for now.
+meta_data, pro, rna, cite_seq_data, labels_encoder, labels, data_with_targets = compile_data(data_directory, cell_type_col, use_template_metadata = True)
+```
+We can then copy the same lines of code for the mono-omic implementation shown in previous sections.
+```Python
+train_data, test_data, train_labels, test_labels = generate_training(data_with_targets, pro, gene_only = True)
+history, autoencoder, encoder = gene_only_encoder(train_data, test_data, 64, 'GSE100866', 'gene_only')
+```
+
+Likewise, we can visualize the clustering of the autoencoder as with previous sections as well.
+
+**WARNING**: Please do not run `comparison_cluster()` as it expects at least 2 classes or 2 distinct cell types which doesn't exist if you are missing template metadata.
+```Python
+N_predict = 10000
+# Make the encoder do its job. We can now store this as an output to a var
+training_predicted = encoder.predict(test_data[:N_predict])
+reducer = umap.UMAP()
+train_encoded_umap = reducer.fit_transform(training_predicted)
+train_unencoded_umap = reducer.fit_transform(test_data[:N_predict])
+
+color = generate_color(labels_encoder, labels)
+color_map = generate_colormap(color, labels_encoder, labels)
+
+vis_data2d(train_encoded_umap, train_unencoded_umap, test_labels, labels_encoder, color_map, N_predict,
+           left_label = f'Encoded UMAP Gene Only-Score: {"nil"}', right_label = f'Control UMAP-Score: {"nil"}', spacer = 'GSE100866/geneOnly_NoMeta_UMAP')
+```
+![pic](anim/GSE100866/geneOnly_NoMeta_UMAP/2d_plot.png)
+
+### Labelling Clusters
+
+In this package, we understand that one of the goals of clustering cells is to finally label them and perform downstream analysis such as differentially expressed genes. Hence, we provide an implementation to label clusters. We would be continuing the example from the previous section as it is more natural. 
+
+We seek to implement a clustering method similar to what Seurat had done, mainly by first constructing a K-nearest neighbour (KNN) graph before applying the modularity optimization technique, Louvain algorithm to iteratively group cells together.
+
+To do so, we would use `find_clusters()` which takes in 2 arguments:
+
+1. `data`: which is the higher dimension data. Usually from `encoder.predict()` or the variable `training_predicted` from the previous code block.
+2. `n_neighbours`: This is default set to 20 and defines the number of neighbours while constructing a KNN graph.
+
+The function would then return an array of labels. The labels are ordered in the same way as `data`. ie, The label for `data[0]` would be `labels[0]`.
+```Python
+cluster_label_encoded = find_clusters(training_predicted)
+```
+
+We also provide a visualization tool if you're planning to visually inspect the cluster accuracy. This function is `plot_custom_labels()`.
+
+It takes in the following arguments:
+
+1. `data`: This data would be obtained after using an additional dimensionality reduction method such as tSNE, UMAP and pyMDE. This is askin to `train_encoded_umap` from the previous code block
+2. `labels`: This is the labels from `find_clusters()`
+3. `spacer` and `other_spacer`: This is so that you can save figures of a certain file name.
+4. `x`: The x-axis labels if you choose to customize it.
+5. `y`: The y-axis labels if you choose to customize it.
+6. `s`: The size of the marker if you choose to customize it.
+
+In the code snippet below, `'GSE100866'` is added to the `spacer` argument and nothing is supplied to `other_spacer`. This would save the image to `anim/GSE100866/custom_labels_plot_.png`.
+```Python
+plot_custom_labels(train_encoded_umap, cluster_label_encoded,'GSE100866')
+```
+![pic](anim/GSE100866/custom_labels_plot_.png)
+
 
 ## Sample Datasets
 ### Datasets used to validate clustering ability of our autoencoder.
