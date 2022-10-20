@@ -14,3 +14,4 @@ tf-estimator-nightly>=2.8.0.dev2021122109
 torch>=1.12.1
 torchvision>=0.13.1
 umap-learn>=0.5.3
+scikit-network>=0.27.1
