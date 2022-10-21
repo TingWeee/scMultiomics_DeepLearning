@@ -577,7 +577,16 @@ def plot_custom_labels(data, labels, spacer, other_spacer = '',x_axis = 0, y_axi
 	df = df.rename({0:x_axis, 1:y_axis}, axis = 1)
 
 	sns.scatterplot(x = x_axis, y = y_axis, data = df, hue = 'labels', s = s)
+
+
+	x_mean = df.loc[:,x_axis].mean()
+	x_std = df.loc[:, x_axis].std()
+	y_mean = df.loc[:,y_axis].mean()
+	y_std = df.loc[:,y_axis].std()
+
 	plt.legend(bbox_to_anchor=(1.04,1), loc = 'upper left')
+	plt.xlim(x_mean - (3*x_std), x_mean + (3*x_std))
+	plt.ylim(y_mean - (3*y_std), y_mean + (3*y_std))
 	plt.tight_layout()
 	plt.savefig(f'anim/{spacer}/custom_labels_plot_{other_spacer}.png', dpi = 150)
 	plt.show()
