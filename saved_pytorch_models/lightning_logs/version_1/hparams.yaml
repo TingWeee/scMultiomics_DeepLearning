@@ -1,0 +1,7 @@
+hidden_pro: 18
+hidden_rna: 30
+latent_dim: 24
+lr: 0.1
+nfeatures_pro: 25
+nfeatures_rna: 2000
+p: 0.1
