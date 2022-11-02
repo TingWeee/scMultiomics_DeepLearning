@@ -283,6 +283,7 @@ CBMC (cord blood mononuclear cells) CITE-seq (Stoeckius et al., 2017). 13 antibo
 - [GEO Link](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE100866)
 - [Article](https://www.nature.com/articles/nmeth.4380)
 - Processed Data is also available through [SeuratData](https://github.com/satijalab/seurat-data). Can be accessed with a single command: `InstallData(ds = 'cbmc')`
+- Celltype annotation is given by 'rna_annotations' or 'protein_annotations'
 #### GSE153056
 Human ECCITE-seq (Papalexi et al., 2021). 
 - [GEO Link](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE153056)
