@@ -198,6 +198,8 @@ _, __, merged_m = build_custom_autoencoders([gene_train_data.shape,pro_train_dat
                           n_hidden_layers = (2,1), division_rate = 4, actvn = 'sigmoid', embedding_dim = 64)
 ```
 
+Our implementation includes an optimizer that determines how the autoencoder network should be constructed for reliable results. Parameter arguments that yielded the autoencoder network structure with the best performance selected for through a comparative process, instead of purely being arbitrary.
+
 After training, `plot_model()` was called to give a visual representation of the architecture of this model as shown below: Note that it is similar, if not identical to the model plot as di-omic.
 
 <img src="saved_models/GSE100866/autodecoder_custom.png" height="1000">
