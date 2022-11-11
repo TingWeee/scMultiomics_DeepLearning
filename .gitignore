@@ -12,3 +12,12 @@ data/PBMC_Reference/pbmc_multimodal.h5seurat
 Sample Datasets/Kotliarov_2020/.DS_Store
 Sample Datasets/Kotliarov_2020/high_responders/.DS_Store
 
+Sample Datasets/GSE164378/old/GSE164378_sc.meta.data_3P.csv.gz
+Sample Datasets/GSE164378/old/protein_scale.csv.gz
+Sample Datasets/GSE164378/old/rna_scale.csv.gz
+Sample Datasets/GSE164378/old/rna_scale.csv.gz
+Sample Datasets/GSE164378/old/protein_scale.csv.gz
+Sample Datasets/GSE164378/old/GSE164378_sc.meta.data_3P.csv.gz
+Sample Datasets/GSE164378/new_meta_data.csv.gz
+Sample Datasets/GSE164378/new_protein.csv.gz
+Sample Datasets/GSE164378/new_rna.csv.gz
