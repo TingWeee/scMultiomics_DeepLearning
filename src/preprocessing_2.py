@@ -16,6 +16,7 @@ import sklearn.neighbors
 import seaborn as sns
 import umap
 from sklearn.decomposition import PCA
+import dill
 # from sknetwork.clustering import Louvain
 
 def get_path(data_directory):
@@ -130,7 +131,28 @@ def generate_palette(metadata, colName, colormap="bright"):
     palette = {group: color for group, color in zip(groups, colors)}
     return palette
 
-def plotObjs(Rdata, metadata, refCol, figWidth = 10, figHeight = 7, legendAnchor=(1.25, 0.5), palette):
+def plotReloadedObj(filePath, refCol, palette=None):
+        reloadedObj = dill.load(open(filePath, "rb"))
+        metadata=reloadedObj.gene_protein.umap_df
+        if palette == None: palette = generate_palette(metadata, refCol)
+        ##
+        plot_names = (list(vars(reloadedObj).keys()))
+
+        fig, ax = plt.subplots(2,2, figsize = (14,14))
+        ind = 0
+        for x in plot_names:
+                n = getattr(reloadedObj,x)
+                sns.scatterplot(data = n.umap_df,x="UMAP1", y = "UMAP2",
+                                hue = refCol,palette=palette,s = 4,ax=ax[ind]).set(title = f'{x} score:{n.score}')
+                ax[ind].get_legend().remove()
+                ind+=1
+        print(x, n.score)
+        plt.legend(loc='center right',bbox_to_anchor=legendAnchor)
+        
+        # plotObjs(reloadedObj, metadata,refCol, palette)
+        
+
+def plotObjs(Rdata, metadata, refCol, figWidth = 10, figHeight = 7, legendAnchor=(1.25, 0.5), palette=None):
 
     if palette == None: palette = generate_palette(metadata, refCol)
     
