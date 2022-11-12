@@ -130,14 +130,14 @@ def generate_palette(metadata, colName, colormap="bright"):
     palette = {group: color for group, color in zip(groups, colors)}
     return palette
 
-def plotObjs(Rdata, metadata, refCol):
-    
-    palette = generate_palette(metadata, refCol)
+def plotObjs(Rdata, metadata, refCol, figWidth = 10, figHeight = 7, legendAnchor=(1.25, 0.5), palette):
+
+    if palette == None: palette = generate_palette(metadata, refCol)
     
     plot_names = (list(vars(Rdata).keys()))
     numPlots = len(plot_names)
     
-    fig, ax = plt.subplots(numPlots,1, figsize = (10,7*numPlots))
+    fig, ax = plt.subplots(numPlots,1, figsize = (figWidth,figHeight*numPlots))
     ind = 0
     for x in plot_names:
         n = getattr(Rdata,x)
@@ -147,6 +147,6 @@ def plotObjs(Rdata, metadata, refCol):
         ind+=1
         print(x, n.score)
         
-    plt.legend(loc='center right',bbox_to_anchor=(1.25, 0.5))
+    plt.legend(loc='center right',bbox_to_anchor=legendAnchor)
 
         
