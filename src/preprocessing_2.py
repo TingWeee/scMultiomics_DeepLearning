@@ -14,7 +14,8 @@ from matplotlib.colors import hsv_to_rgb
 from sklearn.linear_model import LogisticRegression
 import sklearn.neighbors
 import seaborn as sns
-import umap 
+import umap
+from sklearn.decomposition import PCA
 # from sknetwork.clustering import Louvain
 
 def get_path(data_directory):
@@ -110,7 +111,7 @@ def makeObj(original_dataset, bottleneck, metadata, referenceCol, log_max_iter =
 
 def PCAobj(data, metadata, referenceCol, log_max_iter = 400):
         pca = PCA(n_components=10, svd_solver = 'auto')
-        principal_components=pca.fit_transform(cite_data)
+        principal_components=pca.fit_transform(data)
         reducer = umap.UMAP()
         encoded = reducer.fit_transform(principal_components)
         score = get_score(encoded, metadata, referenceCol, log_max_iter)
