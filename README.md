@@ -209,7 +209,7 @@ GSE128639_obj.gene_protein = GSE128639_GP
 plotObjs(GSE128639_obj, metadata, "celltype.l2")
 ```
 
-![pic](saved_models/GSE128639/New/GP_Custom_Label.png)
+![pic](anim/GSE128639/New/GP_Custom_Label.png)
 
 
 ## Sample Datasets
