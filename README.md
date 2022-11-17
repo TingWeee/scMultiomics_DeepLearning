@@ -180,7 +180,7 @@ After assigning the respective attributes, plotting is easily achieved by purely
 plotObjs(GSE128639_obj, metadata, "celltype.l2")
 ```
 
-![pic](saved_models/GSE128639/New/GO_GP_Control_Plots.png)
+![pic](anim/GSE128639/New/GO_GP_Control_Plots.png)
 
 
 ### Labelling Clusters
