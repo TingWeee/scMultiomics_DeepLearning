@@ -48,40 +48,31 @@ or
 conda install --file requirements.txt
 ```
 ## Methods: Getting data ready for deep learning using Deep-N-Omics 
-Our python package offers both the Tensorflow and Pytorch implementation of autoencoders. In order to do integrative analysis of CITE-seq data (di-omics), the following can be done, for example GSE100866.
+Our python package offers both the Tensorflow and Pytorch implementation of autoencoders. In order to do integrative analysis of CITE-seq data (di-omics), the following can be done, for example GSE128639.
 
 First set the data directory that containts, `rna_scaled.csv.gz`, `protein_scaled.csv.gz` and `meta_data.csv.gz` (optional).
 ```Python
-data_directory = 'Sample Datasets/GSE100866'
+data_directory = 'Sample Datasets/GSE128639'
 ```
 
-Next, using the function `compile_data()` from our package, all the data would be loaded. In the event that the protein and rna files have mismatched barcodes, an error would be thrown.
+Next, using the function `load_data()` from our package, all the data would be loaded. In the event that the protein and rna files have mismatched barcodes, an error would be thrown.
 
-`compile_data()` would use our other function `read_data()` to read in the data. `compile_data()` would also utilize the meta_data in order to come up with non-wordy celltype identifiers before pushing to `sklearn.preprocessing.LabelEncoder()`. 
+`load_data()` would use our other function `get_path()` to read in the data. Do note that the structure of the dataframe for both `rna_scaled.csv.gz` and `protein_scaled.csv.gz` is assumed to have the cell barcodes to be as column names and the gene / protein features to be row names. If this is flipped, the argument `transpose = False` should be used instead.
 
-`compile_data()` would return the following in order:
+`load_data()` would return the following in order:
 
 1. `meta_data`: Contains the metadata file if one is supplied. Otherwise, a template metadata file which only contains cell barcodes would be returned.
 2. `pro`: Contains the transposed protein data as seen in section "Preprocessing: Transposed" with cell barcodes as an index.
 3. `rna`: Contains the transposed rna data as seen in section "Preprocessing: Transposed" with cell barcodes as an index.
-4. `cite_seq_data`: Contains the concatenated rna and protein data with their respective cell types in integers as the last column.
-5. `labels_encoders`: Encoder that encodes the cell types to integers. This is returned so that integers can be mapped back to strings.
-6. `labels`: An array of the predicted celltype from metadata
-7. `data_with_targets`: `cite_seq_data` except with an additional last column containing `labels`
+4. `cite_data`: Contains the concatenated rna and protein data with their respective cell types in integers as the last column.
 
 ```Python
-meta_data, pro, rna, cite_seq_data, labels_encoder, labels, data_with_targets = compile_data(data_directory, cell_type_col)
-```
-
-Use `generate_training()` to generate training data. It uses `train_test_split()` from sklearn but with fancier slicing steps. `split_training_with_labels()` allows for the splitting of gene and protein data in training and test data.
-```Python
-train_data, test_data, train_labels, test_labels = generate_training(data_with_targets, pro, gene_only = False)
-gene_train_data,pro_train_data,gene_test_data,pro_test_data = split_training_with_labels(train_data, test_data, pro)
+meta_data, pro, rna, cite_data = load_data(data_directory)
 ```
 
 ## Methods: Deep Learning with Deep-N-Omics 
 ### Mono-omic data
-If you only have or choose to use mono-omic data (such as RNA expression from scRNA-seq), you can use the function `gene_only_encoder()`. 'GSE100866' and 'gene_only' are supplied here to save the models in the directory 'saved_models/GSE100866/gene_only_NHL...' 
+If you only have or choose to use mono-omic data (such as RNA expression from scRNA-seq), you can use the function `gene_only_encoder()`. 'GSE128639' and 'gene_only' are supplied here to save the models in the directory 'saved_models/GSE128639/gene_only_NHL...' 
 
 In this case, we are expecting to have 2 hidden layers (in `N_hidden`) before the bottleneck layer that contains 64 nodes. Each layer would have 4 (in `division_rate`) times less nodes than the previous nodes. 
 
@@ -95,15 +86,15 @@ In this case, we are expecting to have 2 hidden layers (in `N_hidden`) before th
 **WARNING**: If a `ValueError` is raised stating `"Failed to convert a NumPy array to a Tensor (Unsupported object type float)"`, this means that somewhere in `data_with_targets`, there is a column that is a string. We recommend checking the variables returned from `compile_data` and set the index manually using `df.set_index('BARCODE_COLUMN',inplace = True)`
 
 ```Python
-history, autoencoder, encoder = gene_only_encoder(train_data, test_data, 64, 'GSE100866', 'gene_only', N_hidden = 2, division_rate = 4, actvn = 'sigmoid', epochs = 15)
+GOhistory, GOautoencoder, GObottleneck = gene_only_encoder(rna, rna, 64, 'GSE128639', 'gene_only', N_hidden = 2, division_rate = 4, actvn = 'sigmoid',epochs=20)
 ```
 
 After training, `plot_model()` was called to give a visual representation of the architecture of this model as shown below:
 
-<img src="saved_models/GSE100866/autodecoder_geneonly.png" height="1000">
+<img src="saved_models/GSE128639/autodecoder_geneonly.png" height="1000">
 
 ### Di-omic Data
-To build the autoencoder, just use `gene_protein_encoder()`. 'GSE100866' and 'gene_pro' are supplied here to save the models in the directory 'saved_models/GSE100866/gene_pro_NHG...' 
+To build the autoencoder, just use `gene_protein_encoder()`. 'GSE128639' and 'gene_pro' are supplied here to save the models in the directory 'saved_models/GSE128639/gene_pro_NHG...' 
 
 In this case, we are trying to build an autoencoder with 2 hidden gene layers, 1 hidden protein layer and each layer's nodes is smaller than the previous one by a factor of 4. The bottleneck layer would have 64 nodes, activation functions for all layers would be 'sigmoid' and the number of epochs for the model to train on would be 15.
 
@@ -115,70 +106,11 @@ In this case, we are trying to build an autoencoder with 2 hidden gene layers, 1
 
 **WARNING**: If a `ValueError` is raised stating `"Failed to convert a NumPy array to a Tensor (Unsupported object type float)"`, this means that somewhere in `data_with_targets`, there is a column that is a string. We recommend checking the variables returned from `compile_data` and set the index manually using `df.set_index('BARCODE_COLUMN',inplace = True)`
 ```Python
-history, autodecoder, merged = gene_protein_encoder(pro_train_data,gene_train_data,pro_test_data, gene_test_data, 64, 'GSE100866', 'gene_pro', N_hidden_gene = 2, N_hidden_protein = 1, division_rate = 4, actvn = 'sigmoid', epochs = 15, override = False)
+GPhistory, GPautodecoder, GPbottleneck = gene_protein_encoder(pro, rna, pro, rna, 64, 'GSE128639','gene_pro', N_hidden_gene = 2, N_hidden_protein = 1, division_rate = 4, actvn = 'sigmoid', epochs = 20, override = False)
 ```
 After training, `plot_model()` was called to give a visual representation of the architecture of this model as shown below:
 
-<img src="saved_models/GSE100866/autodecoder_gp.png" height="1000">
-
-
-In order to visualize the cluster, just use the `merged` model which is the encoder portion of the autoencoder to predict. We will use UMAP to visualize our clustering.
-```Python
-N_predict = 5000
-# Make the encoder do its job. We can now store this as an output to a var
-training_predicted = merged.predict([gene_test_data[:N_predict],pro_test_data[:N_predict]])
-reducer = umap.UMAP()
-train_encoded_gp_UMAP = reducer.fit_transform(training_predicted)
-train_encoded_Control_UMAP = reducer.fit_transform(test_data[:N_predict])
-```
-
-`generate_color()` and `generate_colormap()` functions allows for the generation of a colormap for each distinct class in `labels` and is a dictionary so that colors can be seen in the graph.
-
-`comparison_cluster()` is a function that fits a logistic regressor with the UMAP-ed data and returns the score of the cluster as a quantitative proxy for how well the clustering performs.
-
-`vis_data2d()` will plot the points given by the dimensionality reduction method (in this case UMAP), given the respective labels, labels_encoder, colormap, number of predictons and the data from `comparison_cluster()`
-```Python
-color = generate_color(labels_encoder, labels)
-color_map = generate_colormap(color, labels_encoder, labels)
-left, right = comparison_cluster(train_encoded_gp_UMAP, train_encoded_Control_UMAP,test_labels, N_predict = N_predict)
-vis_data2d(train_encoded_gp_UMAP, train_encoded_Control_UMAP, test_labels, labels_encoder, color_map, N_predict, 
-           left_label=f'Gene Protein UMAP-Score: {left}', right_label=f'Control UMAP-Score: {right}', spacer = 'GSE100866/gene_pro_Control_UMAP')
-```
-![pic](anim/GSE100866/gene_pro_Control_UMAP/2d_plot.png)
-
-
-Other methods such as tSNE and `pyMDE` (Minimum-Distortion Embedding) also works as shown in our notebook.
-
-### Using other embedding methods such as `pyMDE`
-Using other embedding methods instead of UMAP using our framework is very simple. Here we demonstrate the ease of use from the previous example:
-
-```Python
-N_predict = 5000
-# Make the encoder do its job. We can now store this as an output to a var
-training_predicted = merged.predict([gene_test_data[:N_predict],pro_test_data[:N_predict]])
-
-# Comment out the UMAP code
-#reducer = umap.UMAP()
-#train_encoded_gp_UMAP = reducer.fit_transform(training_predicted)
-#train_encoded_Control_UMAP = reducer.fit_transform(test_data[:N_predict])
-
-# Add the pyMDE code
-mde_predicted = pymde.preserve_neighbors(torch.Tensor(training_predicted), verbose=False)
-embedding_predicted = mde_predicted.embed()
-
-mde_control = pymde.preserve_neighbors(torch.Tensor(test_data[:N_predict].to_numpy()), verbose=False)
-embedding_control = mde_control.embed()
-
-
-# Comment out the UMAP code and add the respective pyMDE code
-color = generate_color(labels_encoder, labels)
-color_map = generate_colormap(color, labels_encoder, labels)
-# left, right = comparison_cluster(train_encoded_gp_UMAP, train_encoded_Control_UMAP,test_labels, N_predict = N_predict)
-left, right = comparison_cluster(embedding_predicted, embedding_control,test_labels, N_predict = N_predict)
-vis_data2d(embedding_predicted, embedding_control, test_labels, labels_encoder, color_map, N_predict, 
-           left_label=f'Gene Protein MDE-Score: {left}', right_label=f'Control MDE-Score: {right}', spacer = 'GSE100866/gene_pro_Control_MDE')
-```
-![pic](anim/GSE100866/geneOnly_Mde/2d_plot.png)
+<img src="saved_models/GSE128639/autodecoder_gp.png" height="1000">
 
 ### N-omic Data
 If you are interested in performing more than di-omic integrative analysis, we provide an implementation for this.
@@ -191,10 +123,10 @@ The function for this would be `build_custom_autoencoders()`. Implementation of 
 1. `concatenated_shapes` argument takes in a list of shapes. For our example, it is a list of shapes of `gene_train_data` and `pro_train_data`.
 2. `saved_model_dir_name` which is the folder in which the model will be saved, it is identical to the mono-omic and di-omic implementation. 
 3. `train_data_lst` argument takes in a list of training data. For our example, it is `gene_train_data` and `pro_train_data`. They need to be in the same order as in `concatenated_shapes`.
-4.`n_hidden_layers` argument takes in a list or a tuple of hidden layers to use for each omic data. In our example, `(2,1)` means 2 hidden layers for the gene data and 1 hidden layer for the protein data.
+4. `n_hidden_layers` argument takes in a list or a tuple of hidden layers to use for each omic data. In our example, `(2,1)` means 2 hidden layers for the gene data and 1 hidden layer for the protein data.
 
 ```Python
-_, __, merged_m = build_custom_autoencoders([gene_train_data.shape,pro_train_data.shape], 'GSE100866', '', [gene_train_data,pro_train_data],epochs = 15, override=  True,
+_, __, merged_m = build_custom_autoencoders([rna.shape,pro.shape], 'GSE128639', [rna,pro],epochs = 20, override=  True,
                           n_hidden_layers = (2,1), division_rate = 4, actvn = 'sigmoid', embedding_dim = 64)
 ```
 
@@ -202,75 +134,82 @@ Our implementation includes an optimizer that determines how the autoencoder net
 
 After training, `plot_model()` was called to give a visual representation of the architecture of this model as shown below: Note that it is similar, if not identical to the model plot as di-omic.
 
-<img src="saved_models/GSE100866/autodecoder_custom.png" height="1000">
+<img src="saved_models/GSE128639/autodecoder_custom.png" height="1000">
 
-### No Meta-Data
+## Methods: Viualizing Clusters
 
-If you choose to not use a metadata file or lack one, supplying `use_template_metadata = True` into `compile_data()` would allow the generation of a template metadata for visualization purposes. The metadata would only contain the barcodes of each cell as the index and a target of 'placeholder' for visualization only.
-
-The following example is to simulate the absence of metadata for the dataset GSE100866. We would first call `compile_data()` with the argument `use_template_metadata = True`.
+For ease of use, we decided to use Object-Oriented Programming to store various types of clustering results for 1 experiment, thus we need to create a `Rdata()` class.
 ```Python
-data_directory = 'Sample Datasets/GSE100866'
-# Use use_template_metadata = True here to use a template one for now.
-meta_data, pro, rna, cite_seq_data, labels_encoder, labels, data_with_targets = compile_data(data_directory, cell_type_col, use_template_metadata = True)
-```
-We can then copy the same lines of code for the mono-omic implementation shown in previous sections.
-```Python
-train_data, test_data, train_labels, test_labels = generate_training(data_with_targets, pro, gene_only = True)
-history, autoencoder, encoder = gene_only_encoder(train_data, test_data, 64, 'GSE100866', 'gene_only')
+GSE128639_obj = Rdata()
 ```
 
-Likewise, we can visualize the clustering of the autoencoder as with previous sections as well.
+This way, we can store various attributes to this class for ease of access later. In order to store it properly, we would need to create objects which are different representations of the data (Gene Only, Gene and Protein, No Autoencoder Data). We do this by calling `makeObj()`.
 
-**WARNING**: Please do not run `comparison_cluster()` as it expects at least 2 classes or 2 distinct cell types which doesn't exist if you are missing template metadata.
+`makeObj()` takes in a few arguments and creates an object with the inputs as attributes:
+
+1. `original_dataset`: The original dataset used to train the particular model.
+2. `bottleneck`: The bottleneck layer extracted from `gene_only_encoder()`, `gene_protein_encoder()` or `build_custom_autoencoders()`. If none, provide `None`.
+3. `metadata`: The metadata of the data.
+4. `referenceCol`: The reference column for colour coding of cells later.
+5. `log_max_iter = 400`: This is just a parameter for the in-built logistic regression model to ensure convergence. Higher the number means higher chance of convergence but it is slower. Default is set to 400.
+
 ```Python
-N_predict = 10000
-# Make the encoder do its job. We can now store this as an output to a var
-training_predicted = encoder.predict(test_data[:N_predict])
-reducer = umap.UMAP()
-train_encoded_umap = reducer.fit_transform(training_predicted)
-train_unencoded_umap = reducer.fit_transform(test_data[:N_predict])
-
-color = generate_color(labels_encoder, labels)
-color_map = generate_colormap(color, labels_encoder, labels)
-
-vis_data2d(train_encoded_umap, train_unencoded_umap, test_labels, labels_encoder, color_map, N_predict,
-           left_label = f'Encoded UMAP Gene Only-Score: {"nil"}', right_label = f'Control UMAP-Score: {"nil"}', spacer = 'GSE100866/geneOnly_NoMeta_UMAP')
+GSE128639_GO = makeObj(rna, GObottleneck, metadata, "celltype.l2")
+GSE128639_GP = makeObj([rna, pro], GPbottleneck, metadata,"celltype.l2")
+GSE128639_control = makeObj(cite_data, None, metadata,"celltype.l2")
 ```
-![pic](anim/GSE100866/geneOnly_NoMeta_UMAP/2d_plot.png)
+
+Next, we can assign the originally created objected these attributes:
+```Python
+GSE128639_obj.gene_only = GSE128639_GO
+GSE128639_obj.gene_protein = GSE128639_GP
+GSE128639_obj.control = GSE128639_control
+```
+
+After assigning the respective attributes, plotting is easily achieved by purely calling `plotObjs()` as it takes in the following arguments:
+
+1. `Rdata`: The `Rdata` class object created earlier with all the attributes.
+2. `metadata`: The metadata, either the template given or actual metadata supplied.
+3. `refCol`: The reference column to be found in `metadata` to be used as a colouring guide for plotting.
+4. `figWidth = 10`: Figure Width in `plt.subplots(figsize = (figWidth,figHeight*number_of_attributes)`
+5. `figHeight = 7`: Figure Height in `plt.subplots(figsize = (figWidth,figHeight*number_of_attributes))`
+6. `legendAnchor=(1.25, 0.5)`: Legend location
+7. `palette=None`: Palette for the different colours for custom colouring if needed. if `None`, a color palette is generated for you.
+
+```Python
+plotObjs(GSE128639_obj, metadata, "celltype.l2")
+```
+
+![pic](saved_models/GSE128639/New/GO_GP_Control_Plots.png)
+
 
 ### Labelling Clusters
-
 In this package, we understand that one of the goals of clustering cells is to finally label them and perform downstream analysis such as differentially expressed genes. Hence, we provide an implementation to label clusters. We would be continuing the example from the previous section as it is more natural. 
 
 We seek to implement a clustering method similar to what Seurat had done, mainly by first constructing a K-nearest neighbour (KNN) graph before applying the modularity optimization technique, Louvain algorithm to iteratively group cells together.
 
 To do so, we would use `find_clusters()` which takes in 2 arguments:
 
-1. `data`: which is the higher dimension data. Usually from `encoder.predict()` or the variable `training_predicted` from the previous code block.
+1. `data`: which is the higher dimension data. Usually from `bottleneck.predict()`.
 2. `n_neighbours`: This is default set to 20 and defines the number of neighbours while constructing a KNN graph.
 
 The function would then return an array of labels. The labels are ordered in the same way as `data`. ie, The label for `data[0]` would be `labels[0]`.
 ```Python
-cluster_label_encoded = find_clusters(training_predicted)
+original_dataset = [rna, pro]
+whole_predicted = GPbottleneck.predict(original_dataset)
+cluster_label_encoded = find_clusters(whole_predicted) 
 ```
 
-We also provide a visualization tool if you're planning to visually inspect the cluster accuracy. This function is `plot_custom_labels()`.
+We can then apply these labels into the metadata and use this as a reference column to plot using `plotObjs()`. For ease of representation, the class is re-instantiated to generate 1 plot instead of 3:
 
-It takes in the following arguments:
-
-1. `data`: This data would be obtained after using an additional dimensionality reduction method such as tSNE, UMAP and pyMDE. This is askin to `train_encoded_umap` from the previous code block
-2. `labels`: This is the labels from `find_clusters()`
-3. `spacer` and `other_spacer`: This is so that you can save figures of a certain file name.
-4. `x`: The x-axis labels if you choose to customize it.
-5. `y`: The y-axis labels if you choose to customize it.
-6. `s`: The size of the marker if you choose to customize it.
-
-In the code snippet below, `'GSE100866'` is added to the `spacer` argument and nothing is supplied to `other_spacer`. This would save the image to `anim/GSE100866/custom_labels_plot_.png`.
 ```Python
-plot_custom_labels(train_encoded_umap, cluster_label_encoded,'GSE100866')
+GSE128639_obj = Rdata()
+GSE128639_GP = makeObj([rna, pro], GPbottleneck, metadata,"celltype.l2")
+GSE128639_obj.gene_protein = GSE128639_GP
+plotObjs(GSE128639_obj, metadata, "celltype.l2")
 ```
-![pic](anim/GSE100866/custom_labels_plot_.png)
+
+![pic](saved_models/GSE128639/New/GP_Custom_Label.png)
 
 
 ## Sample Datasets
