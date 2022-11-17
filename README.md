@@ -48,7 +48,7 @@ or
 conda install --file requirements.txt
 ```
 ## Methods: Getting data ready for deep learning using Deep-N-Omics 
-Our python package offers both the Tensorflow and Pytorch implementation of autoencoders. In order to do integrative analysis of CITE-seq data (di-omics), the following can be done, for example GSE128639.
+Our python package is based in Tensorflow. In order to do integrative analysis of CITE-seq data (di-omics), the following can be done, for example GSE128639.
 
 First set the data directory that containts, `rna_scaled.csv.gz`, `protein_scaled.csv.gz` and `meta_data.csv.gz` (optional).
 ```Python
@@ -57,14 +57,16 @@ data_directory = 'Sample Datasets/GSE128639'
 
 Next, using the function `load_data()` from our package, all the data would be loaded. In the event that the protein and rna files have mismatched barcodes, an error would be thrown.
 
-`load_data()` would use our other function `get_path()` to read in the data. Do note that the structure of the dataframe for both `rna_scaled.csv.gz` and `protein_scaled.csv.gz` is assumed to have the cell barcodes to be as column names and the gene / protein features to be row names. If this is flipped, the argument `transpose = False` should be used instead.
+`load_data()` would use our other function `get_path()` to read in the data. 
+
+**NOTE**: The structure of the dataframe for both `rna_scaled.csv.gz` and `protein_scaled.csv.gz` is assumed to have the cell barcodes to be as column names and the gene / protein features to be row names. If this is flipped, the argument `transpose = False` should be used instead.
 
 `load_data()` would return the following in order:
 
 1. `meta_data`: Contains the metadata file if one is supplied. Otherwise, a template metadata file which only contains cell barcodes would be returned.
 2. `pro`: Contains the transposed protein data as seen in section "Preprocessing: Transposed" with cell barcodes as an index.
 3. `rna`: Contains the transposed rna data as seen in section "Preprocessing: Transposed" with cell barcodes as an index.
-4. `cite_data`: Contains the concatenated rna and protein data with their respective cell types in integers as the last column.
+4. `cite_data`: Contains the concatenated rna and protein data.
 
 ```Python
 meta_data, pro, rna, cite_data = load_data(data_directory)
@@ -76,14 +78,13 @@ If you only have or choose to use mono-omic data (such as RNA expression from sc
 
 In this case, we are expecting to have 2 hidden layers (in `N_hidden`) before the bottleneck layer that contains 64 nodes. Each layer would have 4 (in `division_rate`) times less nodes than the previous nodes. 
 
-
 `gene_only_encoder` returns the following in order:
 
 1. `history`: If this is a newly trained model, you can check the validation loss and training loss of the model for each epoch by running `print(history.history['val_loss'])` or `print(history.history['loss'])`. If this model was loaded from a saved model, it returns `'-'`
 2. `autoencoder`: This is the full autoencoder with the output layer having the same number of nodes as the input layer.
 3. `encoder`: This is the same autoencoder as `autoencoder`, except the last layer of this model is the bottleneck layer.
 
-**WARNING**: If a `ValueError` is raised stating `"Failed to convert a NumPy array to a Tensor (Unsupported object type float)"`, this means that somewhere in `data_with_targets`, there is a column that is a string. We recommend checking the variables returned from `compile_data` and set the index manually using `df.set_index('BARCODE_COLUMN',inplace = True)`
+**WARNING**: If a `ValueError` is raised stating `"Failed to convert a NumPy array to a Tensor (Unsupported object type float)"`, we advise that you check the structure of all the dataframes that you have loaded in. They should be in either one of the formats specified in Methods: Preprocessing.
 
 ```Python
 GOhistory, GOautoencoder, GObottleneck = gene_only_encoder(rna, rna, 64, 'GSE128639', 'gene_only', N_hidden = 2, division_rate = 4, actvn = 'sigmoid',epochs=20)
@@ -104,7 +105,7 @@ In this case, we are trying to build an autoencoder with 2 hidden gene layers, 1
 2. `autodecoder`: This is the full autoencoder with the output layer having the same number of nodes as the input layer.
 3. `merged`: This is the same autoencoder as `autodecoder`, except the last layer of this model is the bottleneck layer.
 
-**WARNING**: If a `ValueError` is raised stating `"Failed to convert a NumPy array to a Tensor (Unsupported object type float)"`, this means that somewhere in `data_with_targets`, there is a column that is a string. We recommend checking the variables returned from `compile_data` and set the index manually using `df.set_index('BARCODE_COLUMN',inplace = True)`
+**WARNING**: If a `ValueError` is raised stating `"Failed to convert a NumPy array to a Tensor (Unsupported object type float)"`, we advise that you check the structure of all the dataframes that you have loaded in. They should be in either one of the formats specified in Methods: Preprocessing.
 ```Python
 GPhistory, GPautodecoder, GPbottleneck = gene_protein_encoder(pro, rna, pro, rna, 64, 'GSE128639','gene_pro', N_hidden_gene = 2, N_hidden_protein = 1, division_rate = 4, actvn = 'sigmoid', epochs = 20, override = False)
 ```
@@ -183,7 +184,7 @@ plotObjs(GSE128639_obj, metadata, "celltype.l2")
 ![pic](anim/GSE128639/New/GO_GP_Control_Plots.png)
 
 
-### Labelling Clusters
+## Labelling Clusters
 In this package, we understand that one of the goals of clustering cells is to finally label them and perform downstream analysis such as differentially expressed genes. Hence, we provide an implementation to label clusters. We would be continuing the example from the previous section as it is more natural. 
 
 We seek to implement a clustering method similar to what Seurat had done, mainly by first constructing a K-nearest neighbour (KNN) graph before applying the modularity optimization technique, Louvain algorithm to iteratively group cells together.
@@ -197,19 +198,48 @@ The function would then return an array of labels. The labels are ordered in the
 ```Python
 original_dataset = [rna, pro]
 whole_predicted = GPbottleneck.predict(original_dataset)
-cluster_label_encoded = find_clusters(whole_predicted) 
+cluster_label_encoded = find_clusters(whole_predicted)
+metadata['custom_labels'] = cluster_label_encoded
 ```
 
 We can then apply these labels into the metadata and use this as a reference column to plot using `plotObjs()`. For ease of representation, the class is re-instantiated to generate 1 plot instead of 3:
 
 ```Python
 GSE128639_obj = Rdata()
-GSE128639_GP = makeObj([rna, pro], GPbottleneck, metadata,"celltype.l2")
+GSE128639_GP = makeObj([rna, pro], GPbottleneck, metadata,"custom_labels")
 GSE128639_obj.gene_protein = GSE128639_GP
-plotObjs(GSE128639_obj, metadata, "celltype.l2")
+plotObjs(GSE128639_obj, metadata, "custom_labels")
 ```
 
 ![pic](anim/GSE128639/New/GP_Custom_Label.png)
+
+## Using other dimensionality reduction methods
+In Deep-N-omics, our default dimensionality reduction method of choice is UMAP. We understand that new and more efficient dimensionality reduction methods can be implemented in the future, thus we are including this section. Unfortunately, at the time of writing this vignette, the implementation of other dimensionality reduction methods are not as easy as implementing the deep learning models.
+
+Below, we show an implementation to use `pyMDE`, a minimum distortion embedding method, by using the trained variables from the previous section (indicated).
+
+```Python
+import pymde
+
+# [rna, pro] and GPbottleneck taken from the previous section
+predicted = GPbottleneck.predict([rna, pro])
+mde_predicted = pymde.preserve_neighbors(torch.Tensor(predicted), verbose=False).embed()
+
+# metadata taken from the previous section
+mde_df = get_plot(mde_predicted, metadata)
+score = get_score(mde_predicted, metadata, referenceCol = "celltype.l2", log_max_iter = 400)
+
+# GPbottleneck taken from the previous section
+GSE128639_GP_mde = IndivData(GPbottleneck, mde_predicted, mde_df, score)
+
+# The following code is almost entirely the same as the previous section
+GSE128639_obj = Rdata()
+GSE128639_GP = makeObj([rna, pro], GPbottleneck, metadata,"celltype.l2")
+GSE128639_obj.gene_protein = GSE128639_GP
+GSE128639_obj.gene_protein_mde = GSE128639_GP_mde
+plotObjs(GSE128639_obj, metadata, "celltype.l2")
+```
+![pic](anim/GSE128639/New/GP_UMAP_mde.png)
 
 
 ## Sample Datasets
