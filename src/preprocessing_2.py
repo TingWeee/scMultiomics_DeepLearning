@@ -46,8 +46,9 @@ def load_data(data_directory, transpose = True, set_index = False):
                 meta_data = pd.read_csv(path_dicts['meta'], index_col = 0)
                 meta_data['cell_barcode'] = meta_data.index # to preserve cell barcode in encoding later 
         else:
-                meta_data = pd.DataFrame(rna.index, columns =['cell_barcode'])
-
+                #meta_data = pd.DataFrame(rna.index, columns =['cell_barcode'])
+                # Changed this meta_data generation code to give me an additional metadata to playt with.
+                meta_data = pd.DataFrame({use_template_metadata[1]:['placeholder' for x in range(len(rna.index))]}).set_index(rna.index)
         if set_index:
                 rna.set_index(set_index, inplace = True)
                 pro.set_index(set_index, inplace = True)
@@ -140,6 +141,11 @@ def plotReloadedObj(filePath, refCol, palette=None):
 
         fig, ax = plt.subplots(2,2, figsize = (14,14))
         ind = 0
+
+        # See the same change in `plotobjs()`
+        if numPlots == 1:
+                ax = [ax, None]
+                
         for x in plot_names:
                 n = getattr(reloadedObj,x)
                 sns.scatterplot(data = n.umap_df,x="UMAP1", y = "UMAP2",
@@ -161,6 +167,12 @@ def plotObjs(Rdata, metadata, refCol, figWidth = 10, figHeight = 7, legendAnchor
     
     fig, ax = plt.subplots(numPlots,1, figsize = (figWidth,figHeight*numPlots))
     ind = 0
+
+    # This is to handle the case that the numPlots is 1
+    # To prevent the error of "axes" is not subscriptable :D
+    if numPlots == 1:
+        ax = [ax, None]
+
     for x in plot_names:
         n = getattr(Rdata,x)
         sns.scatterplot(data = n.umap_df,x="UMAP1", y = "UMAP2", 
