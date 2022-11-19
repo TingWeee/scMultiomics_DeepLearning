@@ -6,26 +6,7 @@ The emergence of single-cell multimodal omics enabled multiple molecular program
 ## Methods: Preprocessing
 All data sourced from [GEO](https://www.ncbi.nlm.nih.gov/geo/) were processed in R v4.1.2 using `Seurat`. The count matrix of both RNA and ADT data (if any) were loaded in with their respective barcodes, either using `Seurat::Read10X` or `readr::read_csv`. A `SeuratObject` was created with the RNA-seq data and additional assays from ADT were loaded in using `CreateAssayObject(counts = ds.adt)`. The counts for both RNA-seq and ADT seq can now be normalized, and scaled using `ds %>% NormalizeData() %>% FindVariableFeatures() %>% ScaleData()`. RNA and ADT normalized & count data were saved and then processed in Python using our autoencoders.
 
-**NOTE**: We recommend saving the RNA-seq Count data with the filename `rna_scaled.csv.gz` and `protein_scaled.csv.gz`. At the very least, the file name should contain `rna` and `protein`. The data should also be either one of the following formats when loaded in using Python's `pandas`:
-
-**Un-transposed**
-|   | **Unnamed: 0** | **Cell_Barcode 1** | **Cell_Barcode 2** | **...** |
-|---|----------------|--------------------|--------------------|---------|
-| 0 | CD11a          | 1                  | 1                  | 1       |
-| 1 | CD11c          | 1                  | 1.5                | 1       |
-| 2 | CD8a           | 1.5                | -1.2               | 1.5     |
-| 3 | ...            | -1.2               | 1                  | -1.2    |
-
-or
-
-
-**Transposed**
-|                    | 0     | 1     | 2    | 3    |
-|--------------------|-------|-------|------|------|
-| **Unnamed: 0**     | CD11a | CD11c | CD8a | ...  |
-| **Cell_Barcode 1** | 1     | 1.5   | 1    | 1.5  |
-| **Cell_Barcode 2** | 1.5   | -1.2  | 1.5  | -1.2 |
-| **...**            | -1.2  | 1     | -1.2 | 1    |
+**NOTE**: We recommend saving the RNA-seq Count data with the filename `rna_scaled.csv.gz` and `protein_scaled.csv.gz`. At the very least, the file name should contain `rna` and `protein`. The colnames should be the cell barcodes while the rownames should be the gene or protein names. 
 
 ### Generating Metadata
 In the event that metadata aka cell identity of immune cells are not given, we highly recommend generating one using `Seurat` as per in this [vignette](https://satijalab.org/seurat/articles/multimodal_reference_mapping.html). However, it is fine if you choose not to use one, we would show an implementation on this case separately.
