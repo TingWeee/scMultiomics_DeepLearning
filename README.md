@@ -1,5 +1,20 @@
-# scMultiomics_DeepLearning
-## Integrative analysis using Autoencoders
+# Deep-N-Omics: A User-friendly Deep-learning framework for Integrative Multimodal Single-cell Analysis
+
+1. [Introduction](#introduction-integrative-analysis-using-Autoencoders)
+2. [Methods: Preprocessing](#methods-preprocessing)
+    1. [Generating Metadata](#generating-metadata)
+3. [Installing required dependencies](#installing-required-dependencies)
+4. [Methods: Getting data ready for deep learning using Deep-N-Omics](#methods-deep-learning-with-deep-n-omics)
+    1. [Mono-omic Data](#mono-omic-data)
+    2. [Di-omic Data](#di-omic-data)
+    3. [N-omic Data](#n-omic-data)
+5. [Methods: Viualizing Clusters](#methods-viualizing-clusters)
+6. [Labelling Clusters](#labelling-clusters)
+7. [Using other dimensionality reduction methods](#using-other-dimensionality-reduction-methods)
+8. [Sample Datasets Used](#sample-datasets)
+
+
+## Introduction: Integrative analysis using Autoencoders
 The emergence of single-cell multimodal omics enabled multiple molecular programs to be simultaneously measured in individual cells at unprecedented resolution. However, analysis of sc-multimodal omics data is challenging due to lack of methods (?) that can accurately integrate across multiple data modalities. Here, we present Deep-N-omics, an approach for integrative analysis using Autoencoders. 
 
 
@@ -54,7 +69,7 @@ meta_data, pro, rna, cite_data = load_data(data_directory)
 ```
 
 ## Methods: Deep Learning with Deep-N-Omics 
-### Mono-omic data
+### Mono-omic Data
 If you only have or choose to use mono-omic data (such as RNA expression from scRNA-seq), you can use the function `gene_only_encoder()`. 'GSE128639' and 'gene_only' are supplied here to save the models in the directory 'saved_models/GSE128639/gene_only_NHL...' 
 
 `gene_only_encoder()` takes in a few arguments:
