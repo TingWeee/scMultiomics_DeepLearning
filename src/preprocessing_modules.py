@@ -158,6 +158,7 @@ def build_autoencoder(input_shape, encoding_dim, N_hidden = 2, division_rate = 4
 	encoding = layers.Dense(feat_dim//division_rate, activation = activation, name = 'gene_encoder_1')(inputs)
 	encoding = layers.BatchNormalization(name = 'BatchNormGeneEncode1')(encoding)
 	div_rate = division_rate
+	i = 0
 	for i in range(N_hidden-1):
 		# The next layer is making the feature smaller by floor dividing by 4
 		div_rate = div_rate*division_rate
@@ -224,6 +225,7 @@ def build_all_encoder(protein_shape, gene_shape, embedding_dim, actvn = 'sigmoid
 	gene_encoding = layers.Dense(gene_feat_dim//division_rate, activation = activation, name = 'gene_encoder_1')(gene_inputs)
 	gene_encoding = layers.BatchNormalization(name = 'BatchNormGeneEncode1')(gene_encoding)
 	div_rate_g = division_rate
+	i = 0
 	for i in range(N_hidden_gene-1):
 		div_rate_g = div_rate_g * division_rate 
 		gene_encoding = layers.Dense(gene_feat_dim//div_rate_g, activation = activation, name = f'gene_encoder_{i+2}')(gene_encoding)
