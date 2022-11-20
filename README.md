@@ -48,6 +48,8 @@ Our python package is based in Tensorflow. In order to do integrative analysis o
 
 First set the data directory that containts, `rna_scaled.csv.gz`, `protein_scaled.csv.gz` and `meta_data.csv.gz` (optional).
 ```Python
+from src.preprocessing_modules import *
+from src.dno_modules2 import *
 data_directory = 'Sample Datasets/GSE128639'
 ```
 
