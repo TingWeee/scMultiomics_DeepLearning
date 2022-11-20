@@ -57,7 +57,17 @@ meta_data, pro, rna, cite_data = load_data(data_directory)
 ### Mono-omic data
 If you only have or choose to use mono-omic data (such as RNA expression from scRNA-seq), you can use the function `gene_only_encoder()`. 'GSE128639' and 'gene_only' are supplied here to save the models in the directory 'saved_models/GSE128639/gene_only_NHL...' 
 
-In this case, we are expecting to have 2 hidden layers (in `N_hidden`) before the bottleneck layer that contains 64 nodes. Each layer would have 4 (in `division_rate`) times less nodes than the previous nodes. 
+`gene_only_encoder()` takes in a few arguments:
+1. `train_data`: dataset that contains only gene normalized counts. This is the same as `test_data`
+2. `test_data`: dataset that contains only gene normalized counts. This is the same as `train_data`. **To be removed in future versions**
+3. `encoding_dim`: Number of nodes to use for the bottleneck layer
+4. `saved_model_dir_name`: folder name to save the models to. e.g, if 'expt1', Saved to 'saved_models/expt1/'.
+5. `name`: folder name to save the models to, this is useful if you're training multiple models under the same experiment. e.g, if `saved_model_dir_name` = 'expt1' and `name = 'test'`, models are saved to 'saved_models/expt1/test_NHL...'
+6. `N_hidden = 2`: Number of hidden layers to use, default 2.
+7. `division_rate = 4`: Rate at which the nodes of subsequent hidden layers to shrink by, default 4.
+8. `actvn = 'sigmoid'`: Activation functions for **ALL** layers, default sigmoid function. 
+9. `epochs = 15`: Number of epochs to train the model, default 15. 
+10. `override = False`: Force train the model again if an existing model of the same hyperparameters are found. Default False.
 
 `gene_only_encoder` returns the following in order:
 
@@ -71,17 +81,27 @@ In this case, we are expecting to have 2 hidden layers (in `N_hidden`) before th
 GOhistory, GOautoencoder, GObottleneck = gene_only_encoder(rna, rna, 64, 'GSE128639', 'gene_only', N_hidden = 2, division_rate = 4, actvn = 'sigmoid',epochs=20)
 ```
 
-After training, `plot_model()` was called to give a visual representation of the architecture of this model as shown below:
-
-<img src="saved_models/GSE128639/autodecoder_geneonly.png" height="1000">
+After training, `plot_model()` was called to give a [visual representation of the architecture of this model](saved_models/GSE128639/autodecoder_geneonly.png).
 
 ### Di-omic Data
-To build the autoencoder, just use `gene_protein_encoder()`. 'GSE128639' and 'gene_pro' are supplied here to save the models in the directory 'saved_models/GSE128639/gene_pro_NHG...' 
+To build the autoencoder, just use `gene_protein_encoder()`.
 
-In this case, we are trying to build an autoencoder with 2 hidden gene layers, 1 hidden protein layer and each layer's nodes is smaller than the previous one by a factor of 4. The bottleneck layer would have 64 nodes, activation functions for all layers would be 'sigmoid' and the number of epochs for the model to train on would be 15.
+`gene_protein_encoder()` takes in the following arguments as inputs:
+1. `pro_train_data`: dataset that contains only protein normalized counts. This is the same as `pro_test_data`
+2. `gene_train_data`: dataset that contains only gene normalized counts. This is the same as `gene_test_data`
+3. `pro_test_data`: dataset that contains only protein normalized counts. This is the same as `pro_train_data`
+4. `gene_test_data`: dataset that contains only gene normalized counts. This is the same as `gene_train_data`
+5. `encoding_dim`: Exactly the same as the function `gene_only_encoder`
+6. `saved_model_dir_name`: Exactly the same as the function `gene_only_encoder`
+7. `name`: Exactly the same as the function `gene_only_encoder`
+8. `N_hidden_gene = 2`: The number of hidden layers for gene data
+9. `N_hidden_protein = 1`: The number of hidden layers for protein data
+10. `division_rate = 4`: Exactly the same as the function `gene_only_encoder`
+11. `actvn = 'sigmoid`: Exactly the same as the function `gene_only_encoder`
+12. `epochs = 15`: Exactly the same as the function `gene_only_encoder`
+13. `override = False`: Exactly the same as the function `gene_only_encoder`
 
 `gene_protein_encoder` returns the following in order:
-
 1. `history`: If this is a newly trained model, you can check the validation loss and training loss of the model for each epoch by running `print(history.history['val_loss'])` or `print(history.history['loss'])`. If this model was loaded from a saved model, it returns `'-'`
 2. `autodecoder`: This is the full autoencoder with the output layer having the same number of nodes as the input layer.
 3. `merged`: This is the same autoencoder as `autodecoder`, except the last layer of this model is the bottleneck layer.
@@ -90,9 +110,7 @@ In this case, we are trying to build an autoencoder with 2 hidden gene layers, 1
 ```Python
 GPhistory, GPautodecoder, GPbottleneck = gene_protein_encoder(pro, rna, pro, rna, 64, 'GSE128639','gene_pro', N_hidden_gene = 2, N_hidden_protein = 1, division_rate = 4, actvn = 'sigmoid', epochs = 20, override = False)
 ```
-After training, `plot_model()` was called to give a visual representation of the architecture of this model as shown below:
-
-<img src="saved_models/GSE128639/autodecoder_gp.png" height="1000">
+After training, `plot_model()` was called to give a [visual representation of the architecture of this model](saved_models/GSE128639/autodecoder_gp.png).
 
 ### N-omic Data
 If you are interested in performing more than di-omic integrative analysis, we provide an implementation for this.
@@ -114,9 +132,8 @@ _, __, merged_m = build_custom_autoencoders([rna.shape,pro.shape], 'GSE128639', 
 
 Our implementation includes an optimizer that determines how the autoencoder network should be constructed for reliable results. Parameter arguments that yielded the autoencoder network structure with the best performance selected for through a comparative process, instead of purely being arbitrary.
 
-After training, `plot_model()` was called to give a visual representation of the architecture of this model as shown below: Note that it is similar, if not identical to the model plot as di-omic.
+After training, `plot_model()` was called to give a [visual representation of the architecture of this model](saved_models/GSE128639/autodecoder_custom.png). Note that it is similar, if not identical to the model plot as di-omic.
 
-<img src="saved_models/GSE128639/autodecoder_custom.png" height="1000">
 
 ## Methods: Viualizing Clusters
 
